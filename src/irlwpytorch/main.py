@@ -23,7 +23,6 @@ References:
 import argparse
 import gym
 import matplotlib.pyplot as plt
-import numpy as np
 import logging
 import numpy as np
 import sys
@@ -39,68 +38,7 @@ __license__ = "MIT"
 
 _logger = logging.getLogger(__name__)
 
-n_states = 400  # position - 20, velocity - 20
-n_actions = 3
-one_feature = 20  # number of state per one feature
-q_table = np.zeros((n_states, n_actions))  # (400, 3)
-feature_matrix = np.eye((n_states))  # (400, 400)
-
-gamma = 0.99
-q_learning_rate = 0.03
-theta_learning_rate = 0.05
-
 np.random.seed(1)
-
-
-def idx_demo(env, one_feature):
-    env_low = env.observation_space.low
-    env_high = env.observation_space.high
-    env_distance = (env_high - env_low) / one_feature
-
-    raw_demo = np.load(file="expert_demo/expert_demo.npy")
-    demonstrations = np.zeros((len(raw_demo), len(raw_demo[0]), 3))
-
-    for x in range(len(raw_demo)):
-        for y in range(len(raw_demo[0])):
-            position_idx = int((raw_demo[x][y][0] - env_low[0]) / env_distance[0])
-            velocity_idx = int((raw_demo[x][y][1] - env_low[1]) / env_distance[1])
-            state_idx = position_idx + velocity_idx * one_feature
-
-            demonstrations[x][y][0] = state_idx
-            demonstrations[x][y][1] = raw_demo[x][y][2]
-
-    return demonstrations
-
-
-def idx_state(env, state):
-    env_low = env.observation_space.low
-    env_high = env.observation_space.high
-    env_distance = (env_high - env_low) / one_feature
-    position_idx = int((state[0] - env_low[0]) / env_distance[0])
-    velocity_idx = int((state[1] - env_low[1]) / env_distance[1])
-    state_idx = position_idx + velocity_idx * one_feature
-    return state_idx
-
-
-def update_q_table(state, action, reward, next_state):
-    q_1 = q_table[state][action]
-    q_2 = reward + gamma * max(q_table[next_state])
-    q_table[state][action] += q_learning_rate * (q_2 - q_1)
-
-
-q_table = np.load(file="results/maxent_q_table.npy")  # (400, 3)
-one_feature = 20  # number of state per one feature
-
-
-def idx_to_state(env, state):
-    """ Convert pos and vel about mounting car environment to the integer value"""
-    env_low = env.observation_space.low
-    env_high = env.observation_space.high
-    env_distance = (env_high - env_low) / one_feature
-    position_idx = int((state[0] - env_low[0]) / env_distance[0])
-    velocity_idx = int((state[1] - env_low[1]) / env_distance[1])
-    state_idx = position_idx + velocity_idx * one_feature
-    return state_idx
 
 
 def parse_args(args):
@@ -119,6 +57,9 @@ def parse_args(args):
         action="version",
         # version=f"IRLwPytorch {__version__}",
     )
+    parser.add_argument('--training', action='store_true')
+    parser.add_argument('--testing', action='store_true')
+    parser.add_argument('--render', action='store_true')
     return parser.parse_args(args)
 
 
@@ -147,36 +88,51 @@ def main(args):
     args = parse_args(args)
     _logger.debug("Starting crazy calculations...")
 
-    car = MountainCar()
+    n_states = 400  # position - 20, velocity - 20
+    n_actions = 3
+    one_feature = 20  # number of state per one feature
+    feature_matrix = np.eye((n_states))  # (400, 400)
+
+    gamma = 0.99
+    q_learning_rate = 0.03
+    theta_learning_rate = 0.05
+
+    car = None
+    if args.render:
+        car = MountainCar(True, feature_matrix, one_feature, q_learning_rate, gamma)
+    else:
+        car = MountainCar(False, feature_matrix, one_feature, q_learning_rate, gamma)
 
     theta = -(np.random.uniform(size=(n_states,)))
     trainer = MaxEntropyIRL(feature_matrix, theta)
 
-    if False:
-        env = gym.make('MountainCar-v0', render_mode="human")
-        demonstrations = idx_demo(env, one_feature)
+    if args.training:
+        q_table = np.zeros((n_states, n_actions))  # (400, 3)
+        car.set_q_table(q_table)
+
+        demonstrations = car.idx_demo(one_feature)
 
         expert = trainer.expert_feature_expectations(demonstrations)
         learner_feature_expectations = np.zeros(n_states)
         episodes, scores = [], []
 
-        for episode in range(300):
-            state = env.reset()
+        for episode in range(30000):
+            state = car.env_reset()
             score = 0
 
-            if (episode != 0 and episode == 100) or (episode > 100 and episode % 50 == 0):
+            if (episode != 0 and episode == 10000) or (episode > 10000 and episode % 5000 == 0):
                 learner = learner_feature_expectations / episode
                 trainer.maxent_irl(expert, learner, theta_learning_rate)
 
             state = state[0]
             while True:
-                state_idx = idx_state(env, state)
+                state_idx = car.idx_state(state)
                 action = np.argmax(q_table[state_idx])
-                next_state, reward, done, _, _ = env.step(action)
+                next_state, reward, done, _, _ = car.env_step(action)
 
                 irl_reward = trainer.get_reward(n_states, state_idx)
-                next_state_idx = idx_state(env, next_state)
-                update_q_table(state_idx, action, irl_reward, next_state_idx)
+                next_state_idx = car.idx_state(next_state)
+                car.update_q_table(state_idx, action, irl_reward, next_state_idx)
 
                 learner_feature_expectations += trainer.get_feature_matrix()[int(state_idx)]
 
@@ -187,28 +143,29 @@ def main(args):
                     episodes.append(episode)
                     break
 
-            if episode % 10 == 0:
+            if episode % 100 == 0:
                 score_avg = np.mean(scores)
                 print('{} episode score is {:.2f}'.format(episode, score_avg))
                 plt.plot(episodes, scores, 'b')
-                plt.savefig("./learning_curves/maxent_300.png")
-                np.save("./results/maxent_300_table", arr=q_table)
+                plt.savefig("./learning_curves/maxent_30000.png")
+                np.save("./results/maxent_30000_table", arr=q_table)
 
-    else:
-        env = gym.make('MountainCar-v0', render_mode="human")
+    if args.testing:
+        q_table = np.load(file="results/maxent_q_table.npy")  # (400, 3)
+        car.set_q_table(q_table)
 
         episodes, scores = [], []
 
         for episode in range(10):
-            state = env.reset()
+            state = car.env_reset()
             score = 0
 
             state = state[0]
             while True:
-                env.render()
-                state_idx = idx_to_state(env, state)
+                car.env_render()
+                state_idx = car.idx_to_state(state)
                 action = np.argmax(q_table[state_idx])
-                next_state, reward, done, _, _ = env.step(action)
+                next_state, reward, done, _, _ = car.env_step(action)
 
                 score += reward
                 state = next_state
@@ -217,7 +174,7 @@ def main(args):
                     scores.append(score)
                     episodes.append(episode)
                     plt.plot(episodes, scores, 'b')
-                    plt.savefig("./learning_curves/maxent_test_300.png")
+                    plt.savefig("./learning_curves/maxent_test_30000.png")
                     break
 
             if episode % 1 == 0:
@@ -235,14 +192,4 @@ def run():
 
 
 if __name__ == "__main__":
-    # ^  This is a guard statement that will prevent the following code from
-    #    being executed in the case someone imports this file instead of
-    #    executing it as a script.
-    #    https://docs.python.org/3/library/__main__.html
-
-    # After installing your project with pip, users can also run your Python
-    # modules as scripts via the ``-m`` flag, as defined in PEP 338::
-    #
-    #     python -m irlwpytorch.skeleton 42
-    #
     run()
