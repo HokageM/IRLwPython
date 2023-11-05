@@ -27,8 +27,8 @@ import logging
 import numpy as np
 import sys
 
-from MountainCar import MountainCar
-from MaxEntropyIRL import MaxEntropyIRL
+from .MountainCar import MountainCar
+from .MaxEntropyIRL import MaxEntropyIRL
 
 # from irlwpytorch import __version__
 
