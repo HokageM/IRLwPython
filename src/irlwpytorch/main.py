@@ -57,9 +57,10 @@ def parse_args(args):
         action="version",
         # version=f"IRLwPytorch {__version__}",
     )
-    parser.add_argument('--training', action='store_true')
-    parser.add_argument('--testing', action='store_true')
-    parser.add_argument('--render', action='store_true')
+    parser.add_argument('--training', action='store_true', help="Enables training of model.")
+    parser.add_argument('--testing', action='store_true',
+                        help="Enables testing of previously created model.")
+    parser.add_argument('--render', action='store_true', help="Enables visualization of mountaincar.")
     return parser.parse_args(args)
 
 
