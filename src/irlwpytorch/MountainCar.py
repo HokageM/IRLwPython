@@ -2,6 +2,7 @@ import gym
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 class MountainCar:
 
     def __init__(self, animation, feature_matrix, one_feature, q_learning_rate, gamma, n_states, trainer):
