@@ -65,8 +65,8 @@ def main(args):
     args = parse_args(args)
     _logger.debug("Starting crazy calculations...")
 
-    n_states = 400  # position - 20, velocity - 20
-    n_actions = 3
+    n_states = 400  # position - 20, velocity - 20 -> 20*20
+    n_actions = 3  # Accelerate to the left: 0, Don’t accelerate: 1, Accelerate to the right: 2
     one_feature = 20  # number of state per one feature
     feature_matrix = np.eye(n_states)  # (400, 400)
 
