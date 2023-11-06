@@ -1,6 +1,6 @@
 import pytest
 
-from irlwpytorch.skeleton import fib, main
+from irlwpython.skeleton import fib, main
 
 __author__ = "HokageM"
 __copyright__ = "HokageM"

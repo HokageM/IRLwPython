@@ -1,5 +1,5 @@
-# IRLwPytorch
-Inverse Reinforcement Learning Algorithm implementation with Pytorch.
+# IRLwPython
+Inverse Reinforcement Learning Algorithm implementation with python.
 
 The implementation is based on: https://github.com/reinforcement-learning-kr/lets-do-irl
 
@@ -8,7 +8,7 @@ Mountaincar experiment from: https://www.gymlibrary.dev/environments/classic_con
 # Installation
 
 ```commandline
-cd IRLwPytorch
+cd IRLwPython
 pip install .
 ```
 

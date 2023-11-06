@@ -6,7 +6,7 @@ import sys
 from MountainCar import MountainCar
 from MaxEntropyIRL import MaxEntropyIRL
 
-#from irlwpytorch import __version__
+#from irlwpython import __version__
 
 __author__ = "HokageM"
 __copyright__ = "HokageM"
@@ -31,7 +31,7 @@ def parse_args(args):
     parser.add_argument(
         "--version",
         action="version",
-       # version=f"IRLwPytorch {__version__}",
+       # version=f"IRLwPython {__version__}",
     )
     parser.add_argument('--training', action='store_true', help="Enables training of model.")
     parser.add_argument('--testing', action='store_true',
