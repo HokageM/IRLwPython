@@ -1,4 +1,9 @@
-# Inspired by: https://github.com/reinforcement-learning-kr/lets-do-irl/
+#
+# This file is hardly inspired by the IRL implementation of:
+# https://github.com/reinforcement-learning-kr/lets-do-irl/tree/master/mountaincar/maxent
+# It is a class type implementation restructured for our use case.
+#
+
 import numpy as np
 import matplotlib.pyplot as plt
 
