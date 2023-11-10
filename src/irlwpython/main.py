@@ -5,6 +5,7 @@ import sys
 
 from MountainCar import MountainCar
 from MaxEntropyIRL import MaxEntropyIRL
+from MaxEntropyDeepIRL import MaxEntropyDeepIRL
 
 #from irlwpython import __version__
 
@@ -33,6 +34,7 @@ def parse_args(args):
         action="version",
        # version=f"IRLwPython {__version__}",
     )
+    parser.add_argument('--deep', action='store_true', help="Uses Max Entropy Deep IRL.")
     parser.add_argument('--training', action='store_true', help="Enables training of model.")
     parser.add_argument('--testing', action='store_true',
                         help="Enables testing of previously created model.")
@@ -75,24 +77,25 @@ def main(args):
     theta_learning_rate = 0.05
 
     theta = -(np.random.uniform(size=(n_states,)))
-    trainer = MaxEntropyIRL(feature_matrix, theta)
 
     if args.render:
-        car = MountainCar(True, feature_matrix, one_feature, q_learning_rate, gamma, n_states, trainer)
+        car = MountainCar(True, one_feature)
     else:
-        car = MountainCar(False, feature_matrix, one_feature, q_learning_rate, gamma, n_states, trainer)
+        car = MountainCar(False, one_feature)
+
+    #if args.deep:
+    #    deep = MaxEntropyDeepIRL()
+    #    deep.run()
 
     if args.training:
         q_table = np.zeros((n_states, n_actions))
-        car.set_q_table(q_table)
-
-        car.train(theta_learning_rate)
+        trainer = MaxEntropyIRL(car, feature_matrix, one_feature, q_table, q_learning_rate, gamma, n_states, theta)
+        trainer.train(theta_learning_rate)
 
     if args.testing:
         q_table = np.load(file="./results/maxent_q_table.npy")  # (400, 3)
-        car.set_q_table(q_table)
-
-        car.test()
+        trainer = MaxEntropyIRL(car, feature_matrix, one_feature, q_table, q_learning_rate, gamma, n_states, theta)
+        trainer.test()
 
     _logger.info("Script ends here")
 

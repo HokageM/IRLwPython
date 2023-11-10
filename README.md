@@ -1,9 +1,22 @@
 # IRLwPython
+
+<img src="logo/IRLwPython.jpg" width="200">
+
 Inverse Reinforcement Learning Algorithm implementation with python.
 
-The implementation is based on: https://github.com/reinforcement-learning-kr/lets-do-irl
+Implemented Algorithms:
+- Maximum Entropy IRL
+- Maximum Entropy Deep IRL
 
-Mountaincar experiment from: https://www.gymlibrary.dev/environments/classic_control/mountain_car/
+Experiment:
+- Mountaincar: [gym](https://www.gymlibrary.dev/environments/classic_control/mountain_car/)
+
+The implementation of MaxEntropyIRL and MountainCar is based on the implementation of: 
+[lets-do-irl](https://github.com/reinforcement-learning-kr/lets-do-irl/tree/master/mountaincar/maxent)
+
+# References
+
+...
 
 # Installation
 
