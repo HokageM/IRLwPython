@@ -83,9 +83,9 @@ def main(args):
     else:
         car = MountainCar(False, one_feature)
 
-    #if args.deep:
-    #    deep = MaxEntropyDeepIRL()
-    #    deep.run()
+    if args.deep:
+        deep = MaxEntropyDeepIRL(car)
+        deep.run()
 
     if args.training:
         q_table = np.zeros((n_states, n_actions))
