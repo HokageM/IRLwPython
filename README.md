@@ -1,7 +1,15 @@
 # IRLwPython
+
+
+<img src="logo/IRLwPython.jpg" width="200">
+
 Inverse Reinforcement Learning Algorithm implementation with python.
 
-The implementation is based on: https://github.com/reinforcement-learning-kr/lets-do-irl
+Implemented Algorithms:
+- Maximum Entropy IRL
+- Maximum Entropy Deep IRL
+
+The implementation of MaxEntropyIRL is based on: https://github.com/reinforcement-learning-kr/lets-do-irl
 
 Mountaincar experiment from: https://www.gymlibrary.dev/environments/classic_control/mountain_car/
 

@@ -106,6 +106,7 @@ class MaxEntropyIRL:
             while True:
                 state_idx = self.target.idx_to_state(state)
                 action = np.argmax(self.q_table[state_idx])
+
                 # Run one timestep of the environment's dynamics.
                 next_state, reward, done, _, _ = self.target.env_step(action)
 

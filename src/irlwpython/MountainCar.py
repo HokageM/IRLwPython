@@ -50,6 +50,12 @@ class MountainCar:
         state_idx = position_idx + velocity_idx * self.one_feature
         return state_idx
 
+    def env_action_space(self):
+        return self.env.action_space
+
+    def env_observation_space(self):
+        return self.env.observation_space
+
     def env_render(self):
         """
         Computes the render frames as specified by render_mode attribute during initialization of the environment.
