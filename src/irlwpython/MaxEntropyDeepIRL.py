@@ -1,331 +1,185 @@
+import gym
 import numpy as np
-from collections import deque
 import torch
 import torch.optim as optim
 import torch.nn as nn
-import os
-from utils.utils import *
-from utils.zfilter import ZFilter
+import matplotlib.pyplot as plt
 
 
-def train_discrim(discrim, memory, discrim_optim, demonstrations, discrim_update_num):
-    memory = np.array(memory)
-    states = np.vstack(memory[:, 0])
-    actions = list(memory[:, 1])
-
-    states = torch.Tensor(states)
-    actions = torch.Tensor(actions)
-
-    criterion = torch.nn.BCELoss()
-
-    for _ in range(discrim_update_num):
-        learner = discrim(torch.cat([states, actions], dim=1))
-        demonstrations = torch.Tensor(demonstrations)
-        expert = discrim(demonstrations)
-
-        discrim_loss = criterion(learner, torch.ones((states.shape[0], 1))) + \
-                       criterion(expert, torch.zeros((demonstrations.shape[0], 1)))
-
-        discrim_optim.zero_grad()
-        discrim_loss.backward()
-        discrim_optim.step()
-
-    expert_acc = ((discrim(demonstrations) < 0.5).float()).mean()
-    learner_acc = ((discrim(torch.cat([states, actions], dim=1)) > 0.5).float()).mean()
-
-    return expert_acc, learner_acc
-
-
-def train_actor_critic(actor, critic, memory, actor_optim, critic_optim, actor_critic_update_num, batch_size,
-                       clip_param):
-    memory = np.array(memory)
-    states = np.vstack(memory[:, 0])
-    actions = list(memory[:, 1])
-    rewards = list(memory[:, 2])
-    masks = list(memory[:, 3])
-
-    old_values = critic(torch.Tensor(states))
-    returns, advants = get_gae(rewards, masks, old_values, args)
-
-    mu, std = actor(torch.Tensor(states))
-    old_policy = log_prob_density(torch.Tensor(actions), mu, std)
-
-    criterion = torch.nn.MSELoss()
-    n = len(states)
-    arr = np.arange(n)
-
-    for _ in range(actor_critic_update_num):
-        np.random.shuffle(arr)
-
-        for i in range(n // batch_size):
-            batch_index = arr[batch_size * i: batch_size * (i + 1)]
-            batch_index = torch.LongTensor(batch_index)
-
-            inputs = torch.Tensor(states)[batch_index]
-            actions_samples = torch.Tensor(actions)[batch_index]
-            returns_samples = returns.unsqueeze(1)[batch_index]
-            advants_samples = advants.unsqueeze(1)[batch_index]
-            oldvalue_samples = old_values[batch_index].detach()
-
-            values = critic(inputs)
-            clipped_values = oldvalue_samples + \
-                             torch.clamp(values - oldvalue_samples,
-                                         -clip_param,
-                                         clip_param)
-            critic_loss1 = criterion(clipped_values, returns_samples)
-            critic_loss2 = criterion(values, returns_samples)
-            critic_loss = torch.max(critic_loss1, critic_loss2).mean()
-
-            loss, ratio, entropy = surrogate_loss(actor, advants_samples, inputs,
-                                                  old_policy.detach(), actions_samples,
-                                                  batch_index)
-            clipped_ratio = torch.clamp(ratio,
-                                        1.0 - clip_param,
-                                        1.0 + clip_param)
-            clipped_loss = clipped_ratio * advants_samples
-            actor_loss = -torch.min(loss, clipped_loss).mean()
-
-            loss = actor_loss + 0.5 * critic_loss - 0.001 * entropy
-
-            critic_optim.zero_grad()
-            loss.backward(retain_graph=True)
-            critic_optim.step()
-
-            actor_optim.zero_grad()
-            loss.backward()
-            actor_optim.step()
-
-
-def get_gae(rewards, masks, values, gamma, lamda):
-    rewards = torch.Tensor(rewards)
-    masks = torch.Tensor(masks)
-    returns = torch.zeros_like(rewards)
-    advants = torch.zeros_like(rewards)
-
-    running_returns = 0
-    previous_value = 0
-    running_advants = 0
-
-    for t in reversed(range(0, len(rewards))):
-        running_returns = rewards[t] + (gamma * running_returns * masks[t])
-        returns[t] = running_returns
-
-        running_delta = rewards[t] + (gamma * previous_value * masks[t]) - \
-                        values.data[t]
-        previous_value = values.data[t]
-
-        running_advants = running_delta + (gamma * lamda * \
-                                           running_advants * masks[t])
-        advants[t] = running_advants
-
-    advants = (advants - advants.mean()) / advants.std()
-    return returns, advants
-
-
-def surrogate_loss(actor, advants, states, old_policy, actions, batch_index):
-    mu, std = actor(states)
-    new_policy = log_prob_density(actions, mu, std)
-    old_policy = old_policy[batch_index]
-
-    ratio = torch.exp(new_policy - old_policy)
-    surrogate_loss = ratio * advants
-    entropy = get_entropy(mu, std)
-
-    return surrogate_loss, ratio, entropy
-
-
-class Actor(nn.Module):
-    def __init__(self, num_inputs, num_outputs, hidden_size):
-        super(Actor, self).__init__()
+class ActorNetwork(nn.Module):
+    def __init__(self, num_inputs, num_output, hidden_size):
+        super(ActorNetwork, self).__init__()
         self.fc1 = nn.Linear(num_inputs, hidden_size)
         self.fc2 = nn.Linear(hidden_size, hidden_size)
-        self.fc3 = nn.Linear(hidden_size, num_outputs)
-
-        self.fc3.weight.data.mul_(0.1)
-        self.fc3.bias.data.mul_(0.0)
+        self.fc3 = nn.Linear(hidden_size, num_output)
 
     def forward(self, x):
-        x = torch.tanh(self.fc1(x))
-        x = torch.tanh(self.fc2(x))
-        mu = self.fc3(x)
-        logstd = torch.zeros_like(mu)
-        std = torch.exp(logstd)
-        return mu, std
+        x = nn.functional.relu(self.fc1(x))
+        x = nn.functional.relu(self.fc2(x))
+        return self.fc3(x) # torch.nn.functional.softmax(self.fc3(x))
 
 
-class Critic(nn.Module):
+class CriticNetwork(nn.Module):
     def __init__(self, num_inputs, hidden_size):
-        super(Critic, self).__init__()
+        super(CriticNetwork, self).__init__()
         self.fc1 = nn.Linear(num_inputs, hidden_size)
         self.fc2 = nn.Linear(hidden_size, hidden_size)
         self.fc3 = nn.Linear(hidden_size, 1)
 
-        self.fc3.weight.data.mul_(0.1)
-        self.fc3.bias.data.mul_(0.0)
+        self.theta_layer = nn.Linear(hidden_size, 3)
 
     def forward(self, x):
-        x = torch.tanh(self.fc1(x))
-        x = torch.tanh(self.fc2(x))
-        v = self.fc3(x)
-        return v
-
-
-class Discriminator(nn.Module):
-    def __init__(self, num_inputs, hidden_size):
-        super(Discriminator, self).__init__()
-        self.fc1 = nn.Linear(num_inputs, hidden_size)
-        self.fc2 = nn.Linear(hidden_size, hidden_size)
-        self.fc3 = nn.Linear(hidden_size, 1)
-
-        self.fc3.weight.data.mul_(0.1)
-        self.fc3.bias.data.mul_(0.0)
-
-    def forward(self, x):
-        x = torch.tanh(self.fc1(x))
-        x = torch.tanh(self.fc2(x))
-        prob = torch.sigmoid(self.fc3(x))
-        print("probability", prob)
-        return prob
+        x_ = nn.functional.relu(self.fc1(x))
+        x_ = nn.functional.relu(self.fc2(x_))
+        theta_ = self.theta_layer(x_)
+        return self.fc3(x_) + torch.matmul(theta_, x)
 
 
 class MaxEntropyDeepIRL:
-    def __init__(self, target):
+    def __init__(self, target, state_dim, action_dim, learning_rate=0.001, gamma=0.99, num_epochs=1000):
         self.target = target
-        torch.manual_seed(523)
+        self.state_dim = state_dim
+        self.action_dim = action_dim
+        self.learning_rate = learning_rate
+        # self.theta = torch.rand(state_dim + 1, requires_grad=True)
+        self.gamma = gamma
+        self.num_epochs = num_epochs
+        self.actor_network = ActorNetwork(state_dim, action_dim, 100)
+        self.critic_network = CriticNetwork(state_dim + 1, 100)
+        self.optimizer_actor = optim.Adam(self.actor_network.parameters(), lr=learning_rate)
+        self.optimizer_critic = optim.Adam(self.critic_network.parameters(), lr=learning_rate)
 
-    def run(self):
-        learning_rate = 0.03
-        l2_rate = 0.03
-        logdir = 'logs'
-        max_iter_num = 4000
-        total_sample_size = 2048
-        gamma = 0.99
-        lamda = 0.98
-        clip_param = 0.2
-        batch_size = 64
-        discrim_update_num = 2
-        actor_critic_update_num = 10
-        suspend_accu_gen = 0.8
-        suspend_accu_exp = 0.8
+    def get_reward(self, state, action):
+        state_action = list(state) + list([action])
+        state_action = torch.Tensor(state_action)
+        return self.critic_network(state_action)
 
-        # observation space input position and velocity
-        num_inputs = self.target.env_observation_space().shape[0]
-        # two inputs but 400 different states; position - 20, velocity - 20 -> 20*20 -> num_states
+    def expert_feature_expectations(self, demonstrations):
+        feature_expectations = torch.zeros(self.state_dim)
 
-        num_actions = self.target.env_action_space().n
-        running_state = ZFilter((num_inputs,), clip=5)
+        for demonstration in demonstrations:
+            for state, _, _ in demonstration:
+                state_tensor = torch.tensor(state, dtype=torch.float32)
+                feature_expectations += state_tensor.squeeze()
 
-        print('input size:', num_inputs)
-        print('action size:', num_actions)
+        feature_expectations /= demonstrations.shape[0]
+        return feature_expectations
 
-        actor = Actor(num_inputs=num_inputs, num_outputs=1,
-                      hidden_size=100)  # 3 different actions but is a scalar as output
-        critic = Critic(num_inputs=num_inputs, hidden_size=100)
-        discrim = Discriminator(num_inputs=num_inputs, hidden_size=100)
+    def maxent_irl(self, expert, learner):
+        # Update critic network
 
-        actor_optim = optim.Adam(actor.parameters(), lr=learning_rate)
-        critic_optim = optim.Adam(critic.parameters(), lr=learning_rate, weight_decay=l2_rate)
-        discrim_optim = optim.Adam(discrim.parameters(), lr=learning_rate)
+        self.optimizer_critic.zero_grad()
 
-        # load demonstrations
-        demonstrations = self.target.get_demonstrations()
-        # expert_demo, _ = pickle.load(open('./expert_demo/expert_demo.npy.p', "rb"))  # TODO: load same expert demo
-        # print(expert_demo)
-        # demonstrations = np.array(expert_demo)
-        print("demonstrations.shape", demonstrations.shape)
+        # Loss function for critic network
+        loss_critic = torch.nn.functional.mse_loss(learner, expert)
+        loss_critic.backward()
 
-        # writer = SummaryWriter(logdir)
+        self.optimizer_critic.step()
 
-        # TODO: support load model
-        # if args.load_model is not None:
-        #    saved_ckpt_path = os.path.join(os.getcwd(), 'save_model', str(args.load_model))
-        #    ckpt = torch.load(saved_ckpt_path)
-        #
-        #    actor.load_state_dict(ckpt['actor'])
-        #    critic.load_state_dict(ckpt['critic'])
-        #    discrim.load_state_dict(ckpt['discrim'])
-        #
-        #    running_state.rs.n = ckpt['z_filter_n']
-        #    running_state.rs.mean = ckpt['z_filter_m']
-        #    running_state.rs.sum_square = ckpt['z_filter_s']
-        #
-        #    print("Loaded OK ex. Zfilter N {}".format(running_state.rs.n))
+    def update_q_network(self, state_array, action, reward, next_state):
+        self.optimizer_actor.zero_grad()
 
-        episodes = 0
-        train_discrim_flag = True
+        state_tensor = torch.tensor(state_array, dtype=torch.float32)
+        next_state_tensor = torch.tensor(next_state, dtype=torch.float32)
 
-        for iteration in range(max_iter_num):
-            actor.eval(), critic.eval()
-            memory = deque()
+        q_values = self.actor_network(state_tensor)
+        # q_1 = self.actor_network(state_tensor)[action]
+        # q_2 = reward + self.gamma * max(self.actor_network(next_state_tensor))
+        next_q_values = reward + self.gamma * self.actor_network(next_state_tensor)
 
-            steps = 0
-            scores = []
+        loss_actor = nn.functional.mse_loss(q_values, next_q_values)
+        loss_actor.backward()
+        self.optimizer_actor.step()
 
-            while steps < total_sample_size:
-                state = self.target.env_reset()
-                score = 0
+    def get_demonstrations(self):
+        env_low = self.target.observation_space.low
+        env_high = self.target.observation_space.high
+        env_distance = (env_high - env_low) / 20  # self.one_feature
 
-                state = running_state(state[0])
+        raw_demo = np.load(file="expert_demo/expert_demo.npy")
+        demonstrations = np.zeros((len(raw_demo), len(raw_demo[0]), 3))
+        for x in range(len(raw_demo)):
+            for y in range(len(raw_demo[0])):
+                position_idx = int((raw_demo[x][y][0] - env_low[0]) / env_distance[0])
+                velocity_idx = int((raw_demo[x][y][1] - env_low[1]) / env_distance[1])
+                state_idx = position_idx + velocity_idx * 20  # self.one_feature
 
-                for _ in range(10000):
-                    # if args.render:
-                    #    self.target.env_render()
+                demonstrations[x][y][0] = state_idx
+                demonstrations[x][y][1] = raw_demo[x][y][2]
 
-                    steps += 1
-                    mu, std = actor(torch.Tensor(state).unsqueeze(0))
-                    action = get_action(mu, std)
-                    print("Queried action:", action)
+        return demonstrations
 
-                    next_state, reward, done, _, _ = self.target.env_step(action)
-                    irl_reward = get_reward(discrim, state, action)
+    def train(self):
+        demonstrations = self.get_demonstrations()
+        expert = self.expert_feature_expectations(demonstrations)
 
-                    if done:
-                        mask = 0
-                    else:
-                        mask = 1
+        learner_feature_expectations = torch.zeros(self.state_dim, requires_grad=True)  # Add requires_grad=True
+        episodes, scores = [], []
 
-                    memory.append([state, action, irl_reward, mask])
+        for episode in range(self.num_epochs):
+            state, info = self.target.reset()
+            score = 0
 
-                    next_state = running_state(next_state)
-                    state = next_state
+            if (episode != 0 and episode == 10) or (episode > 10 and episode % 5 == 0):
+                learner = learner_feature_expectations / episode
+                self.maxent_irl(expert, learner)
 
-                    score += reward
+            while True:
+                state_tensor = torch.tensor(state, dtype=torch.float32)
 
-                    if done:
-                        break
+                q_state = self.actor_network(state_tensor)
+                action = torch.argmax(q_state).item()
+                next_state, reward, done, _, _ = self.target.step(action)
 
-                episodes += 1
-                scores.append(score)
+                irl_reward = self.get_reward(state, action)
+                self.update_q_network(state, action, irl_reward, next_state)
 
-            score_avg = np.mean(scores)
-            print('{}:: {} episode score is {:.2f}'.format(iteration, episodes, score_avg))
-            # writer.add_scalar('log/score', float(score_avg), iteration)
+                print("Q Actor Network", state, q_state)
+                print("Reward", reward, "IRL Reward", irl_reward)
 
-            actor.train(), critic.train(), discrim.train()
-            if train_discrim_flag:
-                expert_acc, learner_acc = train_discrim(discrim, memory, discrim_optim, demonstrations,
-                                                        discrim_update_num)
-                print("Expert: %.2f%% | Learner: %.2f%%" % (expert_acc * 100, learner_acc * 100))
-                if expert_acc > suspend_accu_exp and learner_acc > suspend_accu_gen:
-                    train_discrim_flag = False
-            train_actor_critic(actor, critic, memory, actor_optim, critic_optim, actor_critic_update_num, batch_size,
-                               clip_param)
+                learner_feature_expectations = learner_feature_expectations + state_tensor.squeeze()
 
-            if iter % 100:
-                score_avg = int(score_avg)
+                print(expert)
+                print(learner_feature_expectations)
 
-                model_path = os.path.join(os.getcwd(), 'save_model')
-                if not os.path.isdir(model_path):
-                    os.makedirs(model_path)
+                score += reward
+                state = next_state
+                if done:
+                    scores.append(score)
+                    episodes.append(episode)
+                    break
 
-                ckpt_path = os.path.join(model_path, 'ckpt_' + str(score_avg) + '.pth.tar')
+            if episode % 1 == 0:
+                score_avg = np.mean(scores)
+                print('{} episode score is {:.2f}'.format(episode, score_avg))
+                plt.plot(episodes, scores, 'b')
+                plt.savefig("./learning_curves/maxent_30000_network.png")
 
-                save_checkpoint({
-                    'actor': actor.state_dict(),
-                    'critic': critic.state_dict(),
-                    'discrim': discrim.state_dict(),
-                    'z_filter_n': running_state.rs.n,
-                    'z_filter_m': running_state.rs.mean,
-                    'z_filter_s': running_state.rs.sum_square,
-                    'score': score_avg
-                }, filename=ckpt_path)
+        torch.save(self.q_network.state_dict(), "./results/maxent_30000_q_network.pth")
+
+    def test(self):
+        episodes, scores = [], []
+
+        for episode in range(10):
+            state = self.target.reset()
+            score = 0
+
+            while True:
+                self.target.render()
+                state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
+
+                action = torch.argmax(self.q_network(state_tensor)).item()
+                next_state, reward, done, _, _ = self.target.step(action)
+
+                score += reward
+                state = next_state
+
+                if done:
+                    scores.append(score)
+                    episodes.append(episode)
+                    plt.plot(episodes, scores, 'b')
+                    plt.savefig("./learning_curves/maxent_test_30000_network.png")
+                    break
+
+            if episode % 1 == 0:
+                print('{} episode score is {:.2f}'.format(episode, score))

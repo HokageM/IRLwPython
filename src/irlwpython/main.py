@@ -9,6 +9,8 @@ from MaxEntropyDeepIRL import MaxEntropyDeepIRL
 
 #from irlwpython import __version__
 
+import gym
+
 __author__ = "HokageM"
 __copyright__ = "HokageM"
 __license__ = "MIT"
@@ -74,8 +76,9 @@ def main(args):
 
     gamma = 0.99
     q_learning_rate = 0.03
-    theta_learning_rate = 0.05
 
+    # Theta works as Critic
+    theta_learning_rate = 0.05
     theta = -(np.random.uniform(size=(n_states,)))
 
     if args.render:
@@ -84,8 +87,16 @@ def main(args):
         car = MountainCar(False, one_feature)
 
     if args.deep:
-        deep = MaxEntropyDeepIRL(car)
-        deep.run()
+
+        # Create MountainCar environment
+        env = gym.make('MountainCar-v0', render_mode="human")
+        state_dim = env.observation_space.shape[0]
+        action_dim = env.action_space.n
+
+        # Run MaxEnt Deep IRL using MountainCar environment
+        maxent_deep_irl_agent = MaxEntropyDeepIRL(env, state_dim, action_dim)
+        maxent_deep_irl_agent.train()
+        maxent_deep_irl_agent.test()
 
     if args.training:
         q_table = np.zeros((n_states, n_actions))
