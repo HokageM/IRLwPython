@@ -1,6 +1,6 @@
 # IRLwPython
 
-<img src="logo/IRLwPython.jpg" width="200">
+<img src="logo/IRLwPython.png" width="200">
 
 Inverse Reinforcement Learning Algorithm implementation with python.
 

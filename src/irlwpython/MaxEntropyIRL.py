@@ -64,7 +64,7 @@ class MaxEntropyIRL:
 
         # Clip theta
         for j in range(len(self.theta)):
-            if self.theta[j] > 0:
+            if self.theta[j] > 0: # log values
                 self.theta[j] = 0
 
     def update_q_table(self, state, action, reward, next_state):
@@ -101,9 +101,11 @@ class MaxEntropyIRL:
             state = self.target.env_reset()
             score = 0
 
-            # Mini-Batches ?
+            # Mini-Batches:
             if (episode != 0 and episode == 10000) or (episode > 10000 and episode % 5000 == 0):
+                # calculate density
                 learner = learner_feature_expectations / episode
+                # Maximum Entropy IRL step
                 self.maxent_irl(expert, learner, theta_learning_rate)
 
             # One Step in environment
@@ -115,11 +117,15 @@ class MaxEntropyIRL:
                 # Run one timestep of the environment's dynamics.
                 next_state, reward, done, _, _ = self.target.env_step(action)
 
+                # get pseudo-reward and update q table
                 irl_reward = self.get_reward(self.n_states, state_idx)
                 next_state_idx = self.target.idx_to_state(next_state)
                 self.update_q_table(state_idx, action, irl_reward, next_state_idx)
 
+                # State counting for densitiy
                 learner_feature_expectations += self.get_feature_matrix()[int(state_idx)]
+
+                print(reward, irl_reward)
 
                 score += reward
                 state = next_state
