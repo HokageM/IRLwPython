@@ -7,7 +7,7 @@ Inverse Reinforcement Learning Algorithm implementation with python.
 Implemented Algorithms:
 - Maximum Entropy IRL: [1]
 - Discrete Maximum Entropy Deep IRL: [2, 3]
-- IQ-Learn
+- IQ-Learn [4]
 
 Experiment:
 - Mountaincar: [gym](https://www.gymlibrary.dev/environments/classic_control/mountain_car/)
@@ -22,6 +22,8 @@ The implementation of MaxEntropyIRL and MountainCar is based on the implementati
 [2] [Wulfmeier, et al., "Maximum entropy deep inverse reinforcement learning." arXiv preprint arXiv:1507.04888 (2015).](https://arxiv.org/abs/1507.04888)
 
 [3] [Xi-liang Chen, et al., "A Study of Continuous Maximum Entropy Deep Inverse Reinforcement Learning", Mathematical Problems in Engineering, vol. 2019, Article ID 4834516, 8 pages, 2019. https://doi.org/10.1155/2019/4834516](https://www.hindawi.com/journals/mpe/2019/4834516/)
+
+[4] [IQ-learn](https://openreview.net/pdf?id=Aeo-xqtb5p)
 
 # Installation
 
