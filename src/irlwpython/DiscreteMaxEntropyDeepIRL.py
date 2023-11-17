@@ -96,33 +96,15 @@ class DiscreteMaxEntropyDeepIRL:
         loss_actor.backward()
         self.optimizer_actor.step()
 
-    def get_demonstrations(self):
-        env_low = self.target.observation_space.low
-        env_high = self.target.observation_space.high
-        env_distance = (env_high - env_low) / 20  # self.one_feature
-
-        raw_demo = np.load(file="expert_demo/expert_demo.npy")
-        demonstrations = np.zeros((len(raw_demo), len(raw_demo[0]), 3))
-        for x in range(len(raw_demo)):
-            for y in range(len(raw_demo[0])):
-                position_idx = int((raw_demo[x][y][0] - env_low[0]) / env_distance[0])
-                velocity_idx = int((raw_demo[x][y][1] - env_low[1]) / env_distance[1])
-                state_idx = position_idx + velocity_idx * self.one_feature
-
-                demonstrations[x][y][0] = state_idx
-                demonstrations[x][y][1] = raw_demo[x][y][2]
-
-        return demonstrations
-
     def train(self):
-        demonstrations = self.get_demonstrations()
+        demonstrations = self.target.get_demonstrations()
         expert = self.expert_feature_expectations(demonstrations)
 
         learner_feature_expectations = torch.zeros(400, requires_grad=True)
         episodes, scores = [], []
 
         for episode in range(self.num_epochs):
-            state, info = self.target.reset()
+            state, info = self.target.env_reset()
             score = 0
 
             while True:
@@ -130,7 +112,7 @@ class DiscreteMaxEntropyDeepIRL:
 
                 q_state = self.actor_network(state_tensor)
                 action = torch.argmax(q_state).item()
-                next_state, reward, done, _, _ = self.target.step(action)
+                next_state, reward, done, _, _ = self.target.env_step(action)
 
                 # Actor update
                 irl_reward = self.get_reward(state, action)
@@ -146,7 +128,7 @@ class DiscreteMaxEntropyDeepIRL:
             # Critic update
             state_idx = state[0] + state[1] * self.one_feature
             learner_feature_expectations = learner_feature_expectations + torch.Tensor(
-                    self.feat_matrix[int(state_idx)])
+                self.feat_matrix[int(state_idx)])
             learner = learner_feature_expectations / episode
             self.maxent_irl(expert, learner)
 
@@ -162,15 +144,15 @@ class DiscreteMaxEntropyDeepIRL:
         episodes, scores = [], []
 
         for episode in range(10):
-            state = self.target.reset()
+            state = self.target.env_reset()
             score = 0
 
             while True:
-                self.target.render()
+                self.target.env_render()
                 state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
 
                 action = torch.argmax(self.q_network(state_tensor)).item()
-                next_state, reward, done, _, _ = self.target.step(action)
+                next_state, reward, done, _, _ = self.target.env_step(action)
 
                 score += reward
                 state = next_state

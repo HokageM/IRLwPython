@@ -28,9 +28,12 @@ pip install .
 # Usage
 
 ```commandline
-usage: irl [-h] [--version] [--training] [--testing] [--render]
+usage: irl [-h] [--version] [--training] [--testing] [--render] ALGORITHM
 
 Implementation of IRL algorithms
+
+positional arguments:
+  ALGORITHM   Currently supported training algorithm: [max-entropy, discrete-max-entropy-deep]
 
 options:
   -h, --help  show this help message and exit
@@ -38,5 +41,4 @@ options:
   --training  Enables training of model.
   --testing   Enables testing of previously created model.
   --render    Enables visualization of mountaincar.
-
 ```
