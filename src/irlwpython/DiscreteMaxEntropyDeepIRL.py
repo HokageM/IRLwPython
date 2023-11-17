@@ -136,11 +136,14 @@ class DiscreteMaxEntropyDeepIRL:
                 score_avg = np.mean(scores)
                 print('{} episode score is {:.2f}'.format(episode, score_avg))
                 plt.plot(episodes, scores, 'b')
-                plt.savefig("./learning_curves/maxent_30000_network.png")
+                plt.savefig("./learning_curves/discretemaxentdeep_30000.png")
 
-        torch.save(self.q_network.state_dict(), "./results/maxent_30000_q_network.pth")
+        torch.save(self.actor_network.state_dict(), "./results/discretemaxentdeep_30000_actor.pth")
+        torch.save(self.critic_network.state_dict(), "./results/discretemaxentdeep_30000_critic.pth")
 
     def test(self):
+        assert 1 == 0  # TODO: not implemented yet
+
         episodes, scores = [], []
 
         for episode in range(10):
@@ -151,7 +154,7 @@ class DiscreteMaxEntropyDeepIRL:
                 self.target.env_render()
                 state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
 
-                action = torch.argmax(self.q_network(state_tensor)).item()
+                action = torch.argmax(self.actor_network(state_tensor)).item()
                 next_state, reward, done, _, _ = self.target.env_step(action)
 
                 score += reward
@@ -161,7 +164,7 @@ class DiscreteMaxEntropyDeepIRL:
                     scores.append(score)
                     episodes.append(episode)
                     plt.plot(episodes, scores, 'b')
-                    plt.savefig("./learning_curves/maxent_test_30000_network.png")
+                    plt.savefig("./learning_curves/discretemaxentdeep_test_30000.png")
                     break
 
             if episode % 1 == 0:
