@@ -1,4 +1,3 @@
-import gym
 import numpy as np
 import torch
 import torch.optim as optim
@@ -16,7 +15,7 @@ class ActorNetwork(nn.Module):
     def forward(self, x):
         x = nn.functional.relu(self.fc1(x))
         x = nn.functional.relu(self.fc2(x))
-        return self.fc3(x)  # torch.nn.functional.softmax(self.fc3(x))
+        return self.fc3(x)
 
 
 class CriticNetwork(nn.Module):
@@ -36,7 +35,7 @@ class CriticNetwork(nn.Module):
 
 
 class DiscreteMaxEntropyDeepIRL:
-    def __init__(self, target, state_dim, action_dim, feature_matrix=None, learning_rate=0.001, gamma=0.99,
+    def __init__(self, target, state_dim, action_dim, feature_matrix=None, learning_rate=0.01, gamma=0.99,
                  num_epochs=1000):
         self.feat_matrix = feature_matrix
         self.one_feature = 20
@@ -75,7 +74,7 @@ class DiscreteMaxEntropyDeepIRL:
         self.optimizer_critic.zero_grad()
 
         # Loss function for critic network
-        loss_critic = torch.nn.functional.mse_loss(learner, expert)
+        loss_critic = torch.nn.functional.mse_loss(learner, expert) * self.learning_rate
         loss_critic.backward()
 
         self.optimizer_critic.step()
@@ -142,10 +141,10 @@ class DiscreteMaxEntropyDeepIRL:
         torch.save(self.critic_network.state_dict(), "./results/discretemaxentdeep_30000_critic.pth")
 
     def test(self):
-        assert 1 == 0  # TODO: not implemented yet
+        self.actor_network.load_state_dict(torch.load("./results/discretemaxentdeep_30000_actor.pth"))
+        self.critic_network.load_state_dict(torch.load("./results/discretemaxentdeep_30000_critic.pth"))
 
         episodes, scores = [], []
-
         for episode in range(10):
             state = self.target.env_reset()
             score = 0
