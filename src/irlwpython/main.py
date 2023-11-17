@@ -3,13 +3,11 @@ import logging
 import numpy as np
 import sys
 
-from MountainCar import MountainCar
-from MaxEntropyIRL import MaxEntropyIRL
-from MaxEntropyDeepIRL import MaxEntropyDeepIRL
+from irlwpython.MountainCar import MountainCar
+from irlwpython.MaxEntropyIRL import MaxEntropyIRL
+from irlwpython.DiscreteMaxEntropyDeepIRL import DiscreteMaxEntropyDeepIRL
 
-#from irlwpython import __version__
-
-import gym
+from irlwpython import __version__
 
 __author__ = "HokageM"
 __copyright__ = "HokageM"
@@ -34,9 +32,10 @@ def parse_args(args):
     parser.add_argument(
         "--version",
         action="version",
-       # version=f"IRLwPython {__version__}",
+        version=f"IRLwPython {__version__}",
     )
-    parser.add_argument('--deep', action='store_true', help="Uses Max Entropy Deep IRL.")
+    parser.add_argument('algorithm', metavar='ALGORITHM', type=str,
+                        help='Currently supported training algorithm: [max-entropy, discrete-max-entropy-deep]')
     parser.add_argument('--training', action='store_true', help="Enables training of model.")
     parser.add_argument('--testing', action='store_true',
                         help="Enables testing of previously created model.")
@@ -86,25 +85,24 @@ def main(args):
     else:
         car = MountainCar(False, one_feature)
 
-    if args.deep:
-
-        # Create MountainCar environment
-        env = gym.make('MountainCar-v0', render_mode="human")
-        state_dim = env.observation_space.shape[0]
-        action_dim = env.action_space.n
+    if args.algorithm == "discrete-max-entropy-deep" and args.training:
+        state_dim = 2
 
         # Run MaxEnt Deep IRL using MountainCar environment
-        maxent_deep_irl_agent = MaxEntropyDeepIRL(env, state_dim, action_dim)
+        maxent_deep_irl_agent = DiscreteMaxEntropyDeepIRL(car, state_dim, n_actions, feature_matrix)
         maxent_deep_irl_agent.train()
-        maxent_deep_irl_agent.test()
+        # maxent_deep_irl_agent.test()
 
-    if args.training:
+    if args.algorithm == "discrete-max-entropy-deep" and args.testing:
+        pass
+
+    if args.algorithm == "max-entropy" and args.training:
         q_table = np.zeros((n_states, n_actions))
         trainer = MaxEntropyIRL(car, feature_matrix, one_feature, q_table, q_learning_rate, gamma, n_states, theta)
         trainer.train(theta_learning_rate)
 
-    if args.testing:
-        q_table = np.load(file="./results/maxent_q_table.npy")  # (400, 3)
+    if args.algorithm == "max-entropy" and args.testing:
+        q_table = np.load(file="./results/maxent_q_table.npy")
         trainer = MaxEntropyIRL(car, feature_matrix, one_feature, q_table, q_learning_rate, gamma, n_states, theta)
         trainer.test()
 

@@ -107,11 +107,19 @@ class MaxEntropyDeepIRL:
                 demonstrations[x][y][0] = state_idx
                 demonstrations[x][y][1] = raw_demo[x][y][2]
 
+        print(demonstrations)
         return demonstrations
+
+    def get_expert_state_frequencies(self):
+        raw_demo = np.load(file="expert_demo/expert_demo.npy")
+        expert_state_frequencies = []
+        return expert_state_frequencies
 
     def train(self):
         demonstrations = self.get_demonstrations()
         expert = self.expert_feature_expectations(demonstrations)
+
+        expert_state_frequencies = self.get_expert_state_frequencies()
 
         learner_feature_expectations = torch.zeros(self.state_dim, requires_grad=True)  # Add requires_grad=True
         episodes, scores = [], []

@@ -123,9 +123,7 @@ class MaxEntropyIRL:
                 self.update_q_table(state_idx, action, irl_reward, next_state_idx)
 
                 # State counting for densitiy
-                learner_feature_expectations += self.get_feature_matrix()[int(state_idx)]
-
-                print(reward, irl_reward)
+                learner_feature_expectations += self.feature_matrix[int(state_idx)]
 
                 score += reward
                 state = next_state
