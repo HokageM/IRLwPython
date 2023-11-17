@@ -5,7 +5,7 @@ import sys
 
 from MountainCar import MountainCar
 from MaxEntropyIRL import MaxEntropyIRL
-from MaxEntropyDeepIRL import MaxEntropyDeepIRL
+from DiscreteMaxEntropyDeepIRL import DiscreteMaxEntropyDeepIRL
 
 #from irlwpython import __version__
 
@@ -87,16 +87,16 @@ def main(args):
         car = MountainCar(False, one_feature)
 
     if args.deep:
-
         # Create MountainCar environment
         env = gym.make('MountainCar-v0', render_mode="human")
+
         state_dim = env.observation_space.shape[0]
         action_dim = env.action_space.n
 
         # Run MaxEnt Deep IRL using MountainCar environment
-        maxent_deep_irl_agent = MaxEntropyDeepIRL(env, state_dim, action_dim)
+        maxent_deep_irl_agent = DiscreteMaxEntropyDeepIRL(env, state_dim, action_dim, feature_matrix)
         maxent_deep_irl_agent.train()
-        maxent_deep_irl_agent.test()
+        #maxent_deep_irl_agent.test()
 
     if args.training:
         q_table = np.zeros((n_states, n_actions))
