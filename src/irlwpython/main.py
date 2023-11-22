@@ -1,11 +1,16 @@
 import argparse
 import logging
+import pickle
+
 import numpy as np
 import sys
 
+
+from irlwpython.DiscreteMaxEntropyDeepActionOutput import DiscreteMaxEntropyDeepIRL
+from irlwpython.IQLearnIRL import IQLearnIRL
+from irlwpython.GAILIRL import GAILIRL
 from irlwpython.MountainCar import MountainCar
 from irlwpython.MaxEntropyIRL import MaxEntropyIRL
-from irlwpython.DiscreteMaxEntropyDeepIRL import DiscreteMaxEntropyDeepIRL
 
 from irlwpython import __version__
 
@@ -77,9 +82,12 @@ def main(args):
     gamma = 0.99
     q_learning_rate = 0.03
 
-    # Theta works as Critic
+    # Theta works as Rewards
     theta_learning_rate = 0.05
-    theta = -(np.random.uniform(size=(n_states,)))
+    #theta = -(np.random.uniform(size=(n_states,)))
+    theta = np.full((n_states,), -0.1)
+
+    #print("THETA", theta)
 
     if args.render:
         car = MountainCar(True, one_feature)
@@ -90,8 +98,8 @@ def main(args):
         state_dim = 2
 
         # Run MaxEnt Deep IRL using MountainCar environment
-        maxent_deep_irl_agent = DiscreteMaxEntropyDeepIRL(car, state_dim, n_actions, feature_matrix)
-        maxent_deep_irl_agent.train()
+        trainer = DiscreteMaxEntropyDeepIRL(car, state_dim, n_actions, feature_matrix, theta)
+        trainer.train()
         # maxent_deep_irl_agent.test()
 
     if args.algorithm == "discrete-max-entropy-deep" and args.testing:
@@ -106,6 +114,20 @@ def main(args):
         q_table = np.load(file="./results/maxent_q_table.npy")
         trainer = MaxEntropyIRL(car, feature_matrix, one_feature, q_table, q_learning_rate, gamma, n_states, theta)
         trainer.test()
+
+    if args.algorithm == "gail" and args.training:
+        trainer = GAILIRL(car)
+        trainer.train()
+
+    if args.algorithm == "iq-learn" and args.training:
+        car = MountainCar(True, one_feature)
+        eval_car = MountainCar(True, one_feature)
+
+        trainer = IQLearnIRL(car, eval_car)
+        trainer.train()
+
+    if args.algorithm == "iq-learn" and args.testing:
+        pass
 
     _logger.info("Script ends here")
 

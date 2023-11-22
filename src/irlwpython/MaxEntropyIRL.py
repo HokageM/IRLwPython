@@ -111,7 +111,7 @@ class MaxEntropyIRL:
             # One Step in environment
             state = state[0]
             while True:
-                state_idx = self.target.idx_to_state(state)
+                state_idx = self.target.state_to_idx(state)
                 action = np.argmax(self.q_table[state_idx])
 
                 # Run one timestep of the environment's dynamics.
@@ -119,7 +119,7 @@ class MaxEntropyIRL:
 
                 # get pseudo-reward and update q table
                 irl_reward = self.get_reward(self.n_states, state_idx)
-                next_state_idx = self.target.idx_to_state(next_state)
+                next_state_idx = self.target.state_to_idx(next_state)
                 self.update_q_table(state_idx, action, irl_reward, next_state_idx)
 
                 # State counting for densitiy
@@ -153,7 +153,7 @@ class MaxEntropyIRL:
             state = state[0]
             while True:
                 self.target.env_render()
-                state_idx = self.target.idx_to_state(state)
+                state_idx = self.target.state_to_idx(state)
                 action = np.argmax(self.q_table[state_idx])
                 next_state, reward, done, _, _ = self.target.env_step(action)
 
