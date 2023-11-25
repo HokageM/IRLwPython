@@ -5,7 +5,6 @@ import pickle
 import numpy as np
 import sys
 
-
 from irlwpython.DiscreteMaxEntropyDeepActionOutput import DiscreteMaxEntropyDeepIRL
 from irlwpython.IQLearnIRL import IQLearnIRL
 from irlwpython.GAILIRL import GAILIRL
@@ -84,10 +83,10 @@ def main(args):
 
     # Theta works as Rewards
     theta_learning_rate = 0.05
-    #theta = -(np.random.uniform(size=(n_states,)))
-    theta = np.full((n_states,), -0.1)
+    theta = -(np.random.uniform(size=(n_states,)))
+    #theta = np.full((n_states,), -0.1)
 
-    #print("THETA", theta)
+    # print("THETA", theta)
 
     if args.render:
         car = MountainCar(True, one_feature)
@@ -115,15 +114,8 @@ def main(args):
         trainer = MaxEntropyIRL(car, feature_matrix, one_feature, q_table, q_learning_rate, gamma, n_states, theta)
         trainer.test()
 
-    if args.algorithm == "gail" and args.training:
-        trainer = GAILIRL(car)
-        trainer.train()
-
     if args.algorithm == "iq-learn" and args.training:
-        car = MountainCar(True, one_feature)
-        eval_car = MountainCar(True, one_feature)
-
-        trainer = IQLearnIRL(car, eval_car)
+        trainer = IQLearn()
         trainer.train()
 
     if args.algorithm == "iq-learn" and args.testing:

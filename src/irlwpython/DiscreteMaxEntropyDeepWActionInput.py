@@ -8,7 +8,7 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 import matplotlib.pyplot as plt
-
+import random
 
 class ActorNetwork(nn.Module):
     def __init__(self, num_inputs, num_output, hidden_size):
@@ -69,42 +69,31 @@ class DiscreteMaxEntropyDeepIRL:
             if self.theta[j] > 0:  # log values
                 self.theta[j] = 0
 
-    def update_q_network(self, state_array, action, reward, next_state):
-        self.optimizer_actor.zero_grad()
-
-        state_action = list(state_array)
-        if action == 0:
-            state_action += [1.0, 0.0, 0.0]
-        if action == 1:
-            state_action += [0.0, 1.0, 0.0]
-        if action == 2:
-            state_action += [0.0, 0.0, 1.0]
-
-        state_action_tensor = torch.tensor(state_action, dtype=torch.float32)
-
-        state_0 = list(next_state)
+    def update_q_network(self, q_state, action, reward, next_state_dicrete):
+        state_0 = list(next_state_dicrete)
         state_0 += [1.0, 0.0, 0.0]
-        state_1 = list(next_state)
+        state_1 = list(next_state_dicrete)
         state_1 += [0.0, 1.0, 0.0]
-        state_2 = list(next_state)
+        state_2 = list(next_state_dicrete)
         state_2 += [0.0, 0.0, 1.0]
 
-        state_0_tensor = torch.tensor(state_0, dtype=torch.float32)
-        state_1_tensor = torch.tensor(state_1, dtype=torch.float32)
-        state_2_tensor = torch.tensor(state_2, dtype=torch.float32)
+        state_0_tensor = torch.tensor(state_0, dtype=torch.float32).detach()
+        state_1_tensor = torch.tensor(state_1, dtype=torch.float32).detach()
+        state_2_tensor = torch.tensor(state_2, dtype=torch.float32).detach()
 
         next_q_state = torch.tensor([self.actor_network(state_0_tensor),
                                      self.actor_network(state_1_tensor),
-                                     self.actor_network(state_2_tensor)])
-        soft = nn.Softmax()
-        temperatur = 1.5
-        next_state_abs = torch.Tensor(soft(next_q_state / temperatur))
-        print("Next Q State Softmax", next_state_abs)
+                                     self.actor_network(state_2_tensor)]).detach()
 
-        q_1 = self.actor_network(state_action_tensor)
-        q_2 = torch.tensor([reward + self.gamma * torch.max(next_state_abs) + q_1])
+        #action = torch.max(q_state.detach()).item()
+        #print("Next Q State Softmax", next_state_abs)
+        #print(torch.max(next_q_state).detach())
+
+        q_1 = q_state
+        q_2 = reward + self.gamma * torch.max(next_q_state)
 
         loss = torch.nn.functional.mse_loss(q_2, q_1)
+        self.optimizer_actor.zero_grad()
         print("Loss", loss)
         loss.backward()
         self.optimizer_actor.step()
@@ -137,21 +126,26 @@ class DiscreteMaxEntropyDeepIRL:
                 state_2 = list(state_discrete)
                 state_2 += [0.0, 0.0, 1.0]
 
-                state_0_tensor = torch.tensor(state_0, dtype=torch.float32)
-                state_1_tensor = torch.tensor(state_1, dtype=torch.float32)
-                state_2_tensor = torch.tensor(state_2, dtype=torch.float32)
+                state_0_tensor = torch.tensor(state_0, dtype=torch.float32, requires_grad=True)
+                state_1_tensor = torch.tensor(state_1, dtype=torch.float32, requires_grad=True)
+                state_2_tensor = torch.tensor(state_2, dtype=torch.float32, requires_grad=True)
 
                 q_state = torch.tensor([self.actor_network(state_0_tensor),
                                         self.actor_network(state_1_tensor),
-                                        self.actor_network(state_2_tensor)])
+                                        self.actor_network(state_2_tensor)], requires_grad=True)
 
-                soft = nn.Softmax()
-                action_probs = torch.Tensor(soft(q_state))
 
-                action = torch.multinomial(action_probs, 1).item()
+                # Epsilon Greedy Action Selection
+                epsilon = 0.1
+                if random.uniform(0, 1) > epsilon:
+                    action = torch.argmax(q_state.detach()).item()
+                else:
+                    action = random.randint(0, 2)
+
                 next_state, reward, done, _, _ = self.target.env_step(action)
 
                 next_state_discrete = self.target.discretize_state(next_state)
+                #next_state_tensor = torch.tensor(next_state_discrete, dtype=torch.float32)
 
                 # Actor update
                 irl_reward = self.get_reward(state, action)
@@ -160,8 +154,8 @@ class DiscreteMaxEntropyDeepIRL:
                 print("Action", action)
                 print("Reward", reward, "IRL_reward", irl_reward)
                 print("Q State", q_state)
-                # print("Q State Softmax", action_probs)
-                self.update_q_network(state, action, irl_reward, next_state_discrete)
+                print("Next Dircete", next_state_discrete)
+                self.update_q_network(q_state, action, irl_reward, next_state_discrete)
 
                 learner_feature_expectations = learner_feature_expectations + torch.Tensor(
                     self.feat_matrix[int(state_idx)])
@@ -174,11 +168,11 @@ class DiscreteMaxEntropyDeepIRL:
                     break
 
             # Critic update
-            if episode > 4:
+            if (episode != 0 and episode == 4) or (episode > 4 and episode % 4 == 0):
                 learner = learner_feature_expectations / episode
+                self.maxent_irl(expert, learner)
             else:
                 learner = learner_feature_expectations
-            self.maxent_irl(expert, learner)
 
             if episode % 1 == 0:
                 score_avg = np.mean(scores)
