@@ -30,7 +30,8 @@ class QNetwork(nn.Module):
 
 
 class MaxEntropyDeepIRL:
-    def __init__(self, target, state_dim, action_size, feature_matrix=None, one_feature=None, theta=None, learning_rate=0.05, gamma=0.9,
+    def __init__(self, target, state_dim, action_size, feature_matrix=None, one_feature=None, theta=None,
+                 learning_rate=0.05, gamma=0.9,
                  num_epochs=1000):
         self.feature_matrix = feature_matrix
         self.one_feature = one_feature
@@ -168,8 +169,12 @@ class MaxEntropyDeepIRL:
                     break
 
             epsilon = max(epsilon * epsilon_decay, epsilon_min)
-            print(f"Episode: {episode + 1}, Total Reward: {total_reward}, Epsilon: {epsilon}")
+
+            if episode % 50 == 0:
+                print(f"Episode: {episode + 1}, Total Reward: {total_reward}, Epsilon: {epsilon}")
 
             if episode == episodes - 1:
                 plt.plot(episode_arr, scores, 'b')
-                plt.savefig("./learning_curves/maxent_30000.png")
+                plt.savefig(f"./learning_curves/maxentdeep_{episodes}_qdeep.png")
+
+        torch.save(self.q_network.state_dict(), f"./results/maxentdeep_{episodes}_q_network.pth")

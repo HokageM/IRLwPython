@@ -149,8 +149,8 @@ class MaxEntropyIRL:
                 score_avg = np.mean(scores)
                 print('{} episode score is {:.2f}'.format(episode, score_avg))
                 plt.plot(episodes, scores, 'b')
-            #    plt.savefig("./learning_curves/maxent_30000.png")
-            #    np.save("./results/maxent_30000_table", arr=self.q_table)
+                plt.savefig("./learning_curves/maxent_30000_qtable.png")
+                np.save("./results/maxent_30000_table", arr=self.q_table)
 
     def test(self):
         """
