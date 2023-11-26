@@ -6,7 +6,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-
+import PIL
 
 class MaxEntropyIRL:
     def __init__(self, target, feature_matrix, one_feature, q_table, q_learning_rate, gamma, n_states, theta):
@@ -18,6 +18,15 @@ class MaxEntropyIRL:
         self.theta = theta
         self.gamma = gamma
         self.n_states = n_states
+
+    def numpy_to_image(self, array, name):
+        array = array * 255
+        array = np.array(array, dtype=np.uint8)
+        if np.ndim(array) > 3:
+            assert array.shape[0] == 1
+            array = array[0]
+        tensor_img = PIL.Image.fromarray(array)
+        tensor_img.save(f"{name}.png", "PNG")
 
     def get_feature_matrix(self):
         """
@@ -61,6 +70,10 @@ class MaxEntropyIRL:
         """
         gradient = expert - learner
         self.theta += learning_rate * gradient
+
+        #self.numpy_to_image(expert.reshape((20,20)), "expert_flat")
+        #self.numpy_to_image(learner.reshape((20, 20)), "learner_flat")
+        #self.numpy_to_image(self.theta.reshape((20, 20)), "theta_flat")
 
         # Clip theta
         for j in range(len(self.theta)):
@@ -136,8 +149,8 @@ class MaxEntropyIRL:
                 score_avg = np.mean(scores)
                 print('{} episode score is {:.2f}'.format(episode, score_avg))
                 plt.plot(episodes, scores, 'b')
-                plt.savefig("./learning_curves/maxent_30000.png")
-                np.save("./results/maxent_30000_table", arr=self.q_table)
+            #    plt.savefig("./learning_curves/maxent_30000.png")
+            #    np.save("./results/maxent_30000_table", arr=self.q_table)
 
     def test(self):
         """
