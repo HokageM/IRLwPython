@@ -24,8 +24,37 @@ The expert demonstrations for the Mountaincar-v0 are the same as used in [lets-d
 ### Maximum Entropy Inverse Reinforcement Learning
 
 IRL using Q-Learning with a Maximum Entropy update function.
- 
-[//]: # (<img src="logo/IRLwPython.png" width="200">)
+
+#### Training
+
+*Learner training for 29000 episodes*:
+
+<img src="demo/learning_curves/leaner_maxent_29000_episodes.png">
+
+#### Heatmaps
+
+*Learner state frequencies after 1000 episodes*:
+
+<img src="demo/heatmaps/learner_maxent_1000_episodes.png">
+
+*Learner state frequencies after 29000 episodes*:
+
+<img src="demo/heatmaps/leaner_maxent_29000_episodes.png">
+
+*State rewards heatmap after 1000 episodes*:
+
+<img src="demo/heatmaps/rewards_maxent_1000_episodes.png">
+
+*State rewards heatmap after 29000 episodes*:
+
+<img src="demo/heatmaps/rewards_maxent_29000_episodes.png">
+
+#### Testing
+
+*Testing results of the model after 29000 episodes*:
+
+<img src="demo/test_results/test_maxent_29000_episodes.png">
+
 
 ### Deep Maximum Entropy Inverse Reinforcement Learning
 

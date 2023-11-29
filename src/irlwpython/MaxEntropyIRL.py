@@ -8,6 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import PIL
 
+
 class MaxEntropyIRL:
     def __init__(self, target, feature_matrix, one_feature, q_table, q_learning_rate, gamma, n_states, theta):
         self.target = target
@@ -18,15 +19,6 @@ class MaxEntropyIRL:
         self.theta = theta
         self.gamma = gamma
         self.n_states = n_states
-
-    def numpy_to_image(self, array, name):
-        array = array * 255
-        array = np.array(array, dtype=np.uint8)
-        if np.ndim(array) > 3:
-            assert array.shape[0] == 1
-            array = array[0]
-        tensor_img = PIL.Image.fromarray(array)
-        tensor_img.save(f"{name}.png", "PNG")
 
     def get_feature_matrix(self):
         """
@@ -71,13 +63,9 @@ class MaxEntropyIRL:
         gradient = expert - learner
         self.theta += learning_rate * gradient
 
-        #self.numpy_to_image(expert.reshape((20,20)), "expert_flat")
-        #self.numpy_to_image(learner.reshape((20, 20)), "learner_flat")
-        #self.numpy_to_image(self.theta.reshape((20, 20)), "theta_flat")
-
         # Clip theta
         for j in range(len(self.theta)):
-            if self.theta[j] > 0: # log values
+            if self.theta[j] > 0:  # log values
                 self.theta[j] = 0
 
     def update_q_table(self, state, action, reward, next_state):
@@ -93,7 +81,7 @@ class MaxEntropyIRL:
         q_2 = reward + self.gamma * max(self.q_table[next_state])
         self.q_table[state][action] += self.q_learning_rate * (q_2 - q_1)
 
-    def train(self, theta_learning_rate):
+    def train(self, theta_learning_rate, episode_count=30000):
         """
         Trains a model.
         :param theta_learning_rate:
@@ -108,7 +96,7 @@ class MaxEntropyIRL:
         learner_feature_expectations = np.zeros(self.n_states)
         episodes, scores = [], []
         # For every episode
-        for episode in range(30000):
+        for episode in range(episode_count):
             # Resets the environment to an initial state and returns the initial observation.
             # Start position is in random range of [-0.6, -0.4]
             state = self.target.env_reset()
@@ -145,12 +133,20 @@ class MaxEntropyIRL:
                     episodes.append(episode)
                     break
 
-            if episode % 1000 == 0:
+            if episode % 1000 == 0 and episode != 0:
                 score_avg = np.mean(scores)
                 print('{} episode score is {:.2f}'.format(episode, score_avg))
                 plt.plot(episodes, scores, 'b')
-                plt.savefig("./learning_curves/maxent_30000_qtable.png")
-                np.save("./results/maxent_30000_table", arr=self.q_table)
+                plt.savefig(f"src/irlwpython/learning_curves/maxent_{episode}_qtable.png")
+                np.save(f"src/irlwpython/results/maxent_{episode}_qtable", arr=self.q_table)
+                learner = learner_feature_expectations / episode
+                plt.imshow(learner.reshape((20, 20)), cmap='viridis', interpolation='nearest')
+                plt.savefig(f"src/irlwpython/heatmap/learner_{episode}_qtable.png")
+                plt.imshow(self.theta.reshape((20, 20)), cmap='viridis', interpolation='nearest')
+                plt.savefig(f"src/irlwpython/heatmap/theta_{episode}_qtable.png")
+                plt.imshow(self.feature_matrix.dot(self.theta).reshape((20, 20)), cmap='viridis',
+                           interpolation='nearest')
+                plt.savefig(f"src/irlwpython/heatmap/rewards_{episode}_qtable.png")
 
     def test(self):
         """
@@ -177,7 +173,7 @@ class MaxEntropyIRL:
                     scores.append(score)
                     episodes.append(episode)
                     plt.plot(episodes, scores, 'b')
-                    plt.savefig("./learning_curves/maxent_test_30000.png")
+                    plt.savefig("src/irlwpython/learning_curves/maxent_test_30000_maxentropy.png")
                     break
 
             if episode % 1 == 0:
