@@ -1,6 +1,5 @@
 import argparse
 import logging
-import pickle
 
 import numpy as np
 import sys
@@ -16,9 +15,6 @@ __copyright__ = "HokageM"
 __license__ = "MIT"
 
 _logger = logging.getLogger(__name__)
-
-np.random.seed(1)
-
 
 def parse_args(args):
     """Parse command line parameters
@@ -93,7 +89,8 @@ def main(args):
         trainer.train(400)
 
     if args.algorithm == "max-entropy-deep" and args.testing:
-        pass
+        trainer = MaxEntropyDeepIRL(car, 2, n_actions, feature_matrix, one_feature, theta)
+        trainer.test("demo/trained_models/model_maxentropydeep_best_model.pth")
 
     if args.algorithm == "max-entropy" and args.training:
         q_table = np.zeros((n_states, n_actions))
@@ -101,7 +98,7 @@ def main(args):
         trainer.train(theta_learning_rate)
 
     if args.algorithm == "max-entropy" and args.testing:
-        q_table = np.load(file="./results/maxent_q_table.npy")
+        q_table = np.load(file="demo/trained_models/qtable_maxentropy_30000_episodes.npy")
         trainer = MaxEntropyIRL(car, feature_matrix, one_feature, q_table, q_learning_rate, gamma, n_states, theta)
         trainer.test()
 

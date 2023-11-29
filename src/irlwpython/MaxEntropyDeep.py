@@ -1,8 +1,3 @@
-import math
-import os
-import random
-
-import gym
 import numpy as np
 import torch
 import torch.optim as optim
@@ -31,14 +26,11 @@ class QNetwork(nn.Module):
 
 class MaxEntropyDeepIRL:
     def __init__(self, target, state_dim, action_size, feature_matrix=None, one_feature=None, theta=None,
-                 learning_rate=0.05, gamma=0.9,
-                 num_epochs=1000):
+                 learning_rate=0.001, gamma=0.99):
         self.feature_matrix = feature_matrix
         self.one_feature = one_feature
 
-        self.target = target
-        self.state_dim = state_dim
-        self.action_dim = action_size
+        self.target = target  # Environment
 
         self.q_network = QNetwork(state_dim, action_size)
         self.target_q_network = QNetwork(state_dim, action_size)
@@ -46,19 +38,9 @@ class MaxEntropyDeepIRL:
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=learning_rate)
 
         self.gamma = gamma
-        self.num_epochs = num_epochs
 
         self.theta_learning_rate = 0.05
         self.theta = theta
-
-    def tensor_to_image(self, tensor, name):
-        tensor = tensor * 255
-        tensor = np.array(tensor, dtype=np.uint8)
-        if np.ndim(tensor) > 3:
-            assert tensor.shape[0] == 1
-            tensor = tensor[0]
-        tensor_img = PIL.Image.fromarray(tensor)
-        tensor_img.save(f"{name}.png", "PNG")
 
     def select_action(self, state, epsilon):
         if np.random.rand() < epsilon:
@@ -124,22 +106,25 @@ class MaxEntropyDeepIRL:
     def update_target_network(self):
         self.target_q_network.load_state_dict(self.q_network.state_dict())
 
-    def train(self, n_states, episodes=10000, max_steps=10000,
+    def train(self, n_states, episodes=30000, max_steps=200,
               epsilon_start=1.0,
               epsilon_decay=0.995, epsilon_min=0.01):
-        epsilon = epsilon_start
-        episode_arr, scores = [], []
-
         demonstrations = self.target.get_demonstrations()
         expert = self.expert_feature_expectations(demonstrations)
+        plt.imshow(expert.reshape((20, 20)), cmap='viridis', interpolation='nearest')
+        plt.savefig("src/irlwpython/heatmap/expert_deep.png")
+
         learner_feature_expectations = np.zeros(n_states)
+
+        epsilon = epsilon_start
+        episode_arr, scores = [], []
 
         for episode in range(episodes):
             state, info = self.target.env_reset()
             total_reward = 0
 
             # Mini-Batches:
-            if (episode != 0 and episode == 1000) or (episode > 1000 and episode % 500 == 0):
+            if (episode != 0 and episode == 10000) or (episode > 10000 and episode % 5000 == 0):
                 # calculate density
                 learner = learner_feature_expectations / episode
                 # Maximum Entropy IRL step
@@ -164,17 +149,63 @@ class MaxEntropyDeepIRL:
 
                 state = next_state
                 if done:
-                    scores.append(total_reward)
-                    episode_arr.append(episode)
                     break
 
+            scores.append(total_reward)
+            episode_arr.append(episode)
             epsilon = max(epsilon * epsilon_decay, epsilon_min)
+            print(f"Episode: {episode + 1}, Total Reward: {total_reward}, Epsilon: {epsilon}")
 
-            if episode % 50 == 0:
-                print(f"Episode: {episode + 1}, Total Reward: {total_reward}, Epsilon: {epsilon}")
+            if episode % 1000 == 0 and episode != 0:
+                score_avg = np.mean(scores)
+                print('{} episode average score is {:.2f}'.format(episode, score_avg))
+                plt.plot(episode_arr, scores, 'b')
+                learner = learner_feature_expectations / episode
+                plt.savefig(f"src/irlwpython/learning_curves/maxent_{episodes}_{episode}_qnetwork_class.png")
+                plt.imshow(learner.reshape((20, 20)), cmap='viridis', interpolation='nearest')
+                plt.savefig(f"src/irlwpython/heatmap/learner_{episode}_deep_class.png")
+                plt.imshow(self.theta.reshape((20, 20)), cmap='viridis', interpolation='nearest')
+                plt.savefig(f"src/irlwpython/heatmap/theta_{episode}_deep_class.png")
+                plt.imshow(self.feature_matrix.dot(self.theta).reshape((20, 20)), cmap='viridis',
+                           interpolation='nearest')
+                plt.savefig(f"src/irlwpython/heatmap/rewards_{episode}_deep_class.png")
+
+                torch.save(self.q_network.state_dict(), f"./results/maxent_{episodes}_{episode}_network_class.pth")
 
             if episode == episodes - 1:
                 plt.plot(episode_arr, scores, 'b')
-                plt.savefig(f"./learning_curves/maxentdeep_{episodes}_qdeep.png")
+                plt.savefig(f"src/irlwpython/learning_curves/maxentdeep_{episodes}_qdeep_class.png")
 
-        torch.save(self.q_network.state_dict(), f"./results/maxentdeep_{episodes}_q_network.pth")
+        torch.save(self.q_network.state_dict(), f"src/irlwpython/results/maxentdeep_{episodes}_q_network_class.pth")
+
+    def test(self, model_path, epsilon=0.01):
+        """
+        Tests the previous trained model
+        :return:
+        """
+        self.q_network.load_state_dict(torch.load(model_path))
+        #self.q_network #.eval()
+
+        episodes, scores = [], []
+
+        for episode in range(10):
+            state, info = self.target.env_reset()
+            score = 0
+
+            while True:
+                self.target.env_render()
+                action = self.select_action(state, epsilon)
+                next_state, reward, done, _, _ = self.target.env_step(action)
+
+                score += reward
+                state = next_state
+
+                if done:
+                    scores.append(score)
+                    episodes.append(episode)
+                    plt.plot(episodes, scores, 'b')
+                    plt.savefig("src/irlwpython/learning_curves/test_maxentropydeep_best_model_results.png")
+                    break
+
+            if episode % 1 == 0:
+                print('{} episode score is {:.2f}'.format(episode, score))
