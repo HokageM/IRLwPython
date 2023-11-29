@@ -1,11 +1,12 @@
 #
-# This file is hardly inspired by the IRL implementation of:
+# This file is a refactored implementation of the Maximum Entropy IRL from:
 # https://github.com/reinforcement-learning-kr/lets-do-irl/tree/master/mountaincar/maxent
 # It is a class type implementation restructured for our use case.
 #
 
 import numpy as np
 import matplotlib.pyplot as plt
+import PIL
 
 
 class MaxEntropyIRL:
@@ -64,7 +65,7 @@ class MaxEntropyIRL:
 
         # Clip theta
         for j in range(len(self.theta)):
-            if self.theta[j] > 0: # log values
+            if self.theta[j] > 0:  # log values
                 self.theta[j] = 0
 
     def update_q_table(self, state, action, reward, next_state):
@@ -80,7 +81,7 @@ class MaxEntropyIRL:
         q_2 = reward + self.gamma * max(self.q_table[next_state])
         self.q_table[state][action] += self.q_learning_rate * (q_2 - q_1)
 
-    def train(self, theta_learning_rate):
+    def train(self, theta_learning_rate, episode_count=30000):
         """
         Trains a model.
         :param theta_learning_rate:
@@ -95,7 +96,7 @@ class MaxEntropyIRL:
         learner_feature_expectations = np.zeros(self.n_states)
         episodes, scores = [], []
         # For every episode
-        for episode in range(30000):
+        for episode in range(episode_count):
             # Resets the environment to an initial state and returns the initial observation.
             # Start position is in random range of [-0.6, -0.4]
             state = self.target.env_reset()
@@ -111,7 +112,7 @@ class MaxEntropyIRL:
             # One Step in environment
             state = state[0]
             while True:
-                state_idx = self.target.idx_to_state(state)
+                state_idx = self.target.state_to_idx(state)
                 action = np.argmax(self.q_table[state_idx])
 
                 # Run one timestep of the environment's dynamics.
@@ -119,7 +120,7 @@ class MaxEntropyIRL:
 
                 # get pseudo-reward and update q table
                 irl_reward = self.get_reward(self.n_states, state_idx)
-                next_state_idx = self.target.idx_to_state(next_state)
+                next_state_idx = self.target.state_to_idx(next_state)
                 self.update_q_table(state_idx, action, irl_reward, next_state_idx)
 
                 # State counting for densitiy
@@ -132,12 +133,20 @@ class MaxEntropyIRL:
                     episodes.append(episode)
                     break
 
-            if episode % 1000 == 0:
+            if episode % 1000 == 0 and episode != 0:
                 score_avg = np.mean(scores)
                 print('{} episode score is {:.2f}'.format(episode, score_avg))
                 plt.plot(episodes, scores, 'b')
-                plt.savefig("./learning_curves/maxent_30000.png")
-                np.save("./results/maxent_30000_table", arr=self.q_table)
+                plt.savefig(f"src/irlwpython/learning_curves/maxent_{episode}_qtable.png")
+                np.save(f"src/irlwpython/results/maxent_{episode}_qtable", arr=self.q_table)
+                learner = learner_feature_expectations / episode
+                plt.imshow(learner.reshape((20, 20)), cmap='viridis', interpolation='nearest')
+                plt.savefig(f"src/irlwpython/heatmap/learner_{episode}_qtable.png")
+                plt.imshow(self.theta.reshape((20, 20)), cmap='viridis', interpolation='nearest')
+                plt.savefig(f"src/irlwpython/heatmap/theta_{episode}_qtable.png")
+                plt.imshow(self.feature_matrix.dot(self.theta).reshape((20, 20)), cmap='viridis',
+                           interpolation='nearest')
+                plt.savefig(f"src/irlwpython/heatmap/rewards_{episode}_qtable.png")
 
     def test(self):
         """
@@ -153,7 +162,7 @@ class MaxEntropyIRL:
             state = state[0]
             while True:
                 self.target.env_render()
-                state_idx = self.target.idx_to_state(state)
+                state_idx = self.target.state_to_idx(state)
                 action = np.argmax(self.q_table[state_idx])
                 next_state, reward, done, _, _ = self.target.env_step(action)
 
@@ -164,7 +173,7 @@ class MaxEntropyIRL:
                     scores.append(score)
                     episodes.append(episode)
                     plt.plot(episodes, scores, 'b')
-                    plt.savefig("./learning_curves/maxent_test_30000.png")
+                    plt.savefig("src/irlwpython/learning_curves/maxent_test_30000_maxentropy.png")
                     break
 
             if episode % 1 == 0:
