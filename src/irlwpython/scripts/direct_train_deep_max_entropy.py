@@ -4,27 +4,33 @@ import torch.optim as optim
 import gym
 import numpy as np
 import matplotlib.pyplot as plt
+import math
+
 
 class QNetwork(nn.Module):
     def __init__(self, input_size, output_size):
         super(QNetwork, self).__init__()
-        self.fc1 = nn.Linear(input_size, 128)
+        self.fc1 = nn.Linear(input_size, 64)
         self.relu1 = nn.ReLU()
-        # self.fc2 = nn.Linear(128, 128)
-        # self.relu2 = nn.ReLU()
-        self.output_layer = nn.Linear(128, output_size)
+        self.fc2 = nn.Linear(64, 32)
+        self.relu2 = nn.ReLU()
+        self.fc3 = nn.Linear(32, 16)
+        self.relu3 = nn.ReLU()
+        self.output_layer = nn.Linear(16, output_size)
 
     def forward(self, state):
         x = self.fc1(state)
         x = self.relu1(x)
-        # x = self.fc2(x)
-        # x = self.relu2(x)
+        x = self.fc2(x)
+        x = self.relu2(x)
+        x = self.fc3(x)
+        x = self.relu3(x)
         q_values = self.output_layer(x)
         return q_values
 
 
 # Define the DQN Agent
-class DQNAgent:
+class MaxEntropyDeepIRL:
     def __init__(self, state_size, action_size, theta, feature_matrix, one_feature, learning_rate=0.001, gamma=0.99):
         self.q_network = QNetwork(state_size, action_size)
         self.target_q_network = QNetwork(state_size, action_size)
@@ -140,30 +146,23 @@ class DQNAgent:
         gradient = expert - learner
         self.theta += self.theta_learning_rate * gradient
 
-        print("Theta", self.theta)
-
         # Clip theta
         for j in range(len(self.theta)):
-            if self.theta[j] > 0: # log values
+            if self.theta[j] > 0:  # log values
                 self.theta[j] = 0
 
 
 # Training Loop
-def train(agent, env, expert, learner_feature_expectations, n_states, episodes=30000, max_steps=10000, epsilon_start=1.0,
+def train(agent, env, expert, learner_feature_expectations, n_states, episodes=30000, max_steps=10000,
+          epsilon_start=1.0,
           epsilon_decay=0.995, epsilon_min=0.01):
     epsilon = epsilon_start
     episode_arr, scores = [], []
 
+    best_reward = -math.inf
     for episode in range(episodes):
         state, info = env.reset()
         total_reward = 0
-
-        # Mini-Batches:
-        if (episode != 0 and episode == 10000) or (episode > 10000 and episode % 5000 == 0):
-            # calculate density
-            learner = learner_feature_expectations / episode
-            # Maximum Entropy IRL step
-            agent.maxent_irl(expert, learner)
 
         for step in range(max_steps):
             action = agent.select_action(state, epsilon)
@@ -186,23 +185,34 @@ def train(agent, env, expert, learner_feature_expectations, n_states, episodes=3
             if done:
                 break
 
+        if total_reward > best_reward:
+            best_reward = total_reward
+            torch.save(agent.q_network.state_dict(),
+                       f"../results/maxentropydeep_{episode}_best_network_w_{total_reward}.pth")
+
+        if episode != 0:
+            # if (episode+1) % 100 == 0:
+            # calculate density
+            learner = learner_feature_expectations / episode
+            learner_feature_expectations = np.zeros(n_states)
+            # Maximum Entropy IRL step
+            agent.maxent_irl(expert, learner)
+
         scores.append(total_reward)
         episode_arr.append(episode)
         epsilon = max(epsilon * epsilon_decay, epsilon_min)
         print(f"Episode: {episode + 1}, Total Reward: {total_reward}, Epsilon: {epsilon}")
 
-        if episode % 1000 == 0 and episode != 0:
+        if (episode + 1) % 1000 == 0:
             score_avg = np.mean(scores)
             print('{} episode average score is {:.2f}'.format(episode, score_avg))
             plt.plot(episode_arr, scores, 'b')
             plt.savefig(f"../learning_curves/maxent_{episodes}_{episode}_qnetwork.png")
-            learner = learner_feature_expectations / episode
+            # learner = learner_feature_expectations / episode
             plt.imshow(learner.reshape((20, 20)), cmap='viridis', interpolation='nearest')
             plt.savefig(f"../heatmap/learner_{episode}_deep.png")
             plt.imshow(theta.reshape((20, 20)), cmap='viridis', interpolation='nearest')
             plt.savefig(f"../heatmap/theta_{episode}_deep.png")
-            plt.imshow(feature_matrix.dot(theta).reshape((20, 20)), cmap='viridis', interpolation='nearest')
-            plt.savefig(f"../heatmap/rewards_{episode}_deep.png")
 
             torch.save(agent.q_network.state_dict(), f"../results/maxent_{episodes}_{episode}_network_main.pth")
 
@@ -225,10 +235,12 @@ if __name__ == "__main__":
     feature_matrix = np.eye(n_states)
 
     # Theta works as Rewards
-    theta_learning_rate = 0.01
+    theta_learning_rate = 0.001
     theta = -(np.random.uniform(size=(n_states,)))
 
-    agent = DQNAgent(state_size, action_size, theta, feature_matrix, one_feature)
+    print(theta)
+
+    agent = MaxEntropyDeepIRL(state_size, action_size, theta, feature_matrix, one_feature)
 
     demonstrations = agent.get_demonstrations(env)
     expert = agent.expert_feature_expectations(demonstrations)

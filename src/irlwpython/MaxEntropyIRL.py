@@ -103,7 +103,7 @@ class MaxEntropyIRL:
             score = 0
 
             # Mini-Batches:
-            if (episode != 0 and episode == 10000) or (episode > 10000 and episode % 5000 == 0):
+            if (episode != 0 and episode == 10000) or (episode > 10000 and episode % 5000 == 0): # % 100, and reset learner
                 # calculate density
                 learner = learner_feature_expectations / episode
                 # Maximum Entropy IRL step

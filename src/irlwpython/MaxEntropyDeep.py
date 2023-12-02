@@ -9,11 +9,11 @@ import PIL
 class QNetwork(nn.Module):
     def __init__(self, input_size, output_size):
         super(QNetwork, self).__init__()
-        self.fc1 = nn.Linear(input_size, 128)
+        self.fc1 = nn.Linear(input_size, 64)
         self.relu1 = nn.ReLU()
-        # self.fc2 = nn.Linear(128, 128)
-        # self.relu2 = nn.ReLU()
-        self.output_layer = nn.Linear(128, output_size)
+        self.fc2 = nn.Linear(64, 32)
+        self.relu2 = nn.ReLU()
+        self.output_layer = nn.Linear(32, output_size)
 
     def forward(self, state):
         x = self.fc1(state)
@@ -25,7 +25,7 @@ class QNetwork(nn.Module):
 
 
 class MaxEntropyDeepIRL:
-    def __init__(self, target, state_dim, action_size, feature_matrix=None, one_feature=None, theta=None,
+    def __init__(self, target, state_dim, action_size, feature_matrix, one_feature, theta,
                  learning_rate=0.001, gamma=0.99):
         self.feature_matrix = feature_matrix
         self.one_feature = one_feature
@@ -39,7 +39,7 @@ class MaxEntropyDeepIRL:
 
         self.gamma = gamma
 
-        self.theta_learning_rate = 0.05
+        self.theta_learning_rate = 0.005
         self.theta = theta
 
     def select_action(self, state, epsilon):
@@ -111,8 +111,8 @@ class MaxEntropyDeepIRL:
               epsilon_decay=0.995, epsilon_min=0.01):
         demonstrations = self.target.get_demonstrations()
         expert = self.expert_feature_expectations(demonstrations)
-        plt.imshow(expert.reshape((20, 20)), cmap='viridis', interpolation='nearest')
-        plt.savefig("src/irlwpython/heatmap/expert_deep.png")
+        # plt.imshow(expert.reshape((20, 20)), cmap='viridis', interpolation='nearest')
+        # plt.savefig("src/irlwpython/heatmap/expert_deep.png")
 
         learner_feature_expectations = np.zeros(n_states)
 
@@ -122,13 +122,6 @@ class MaxEntropyDeepIRL:
         for episode in range(episodes):
             state, info = self.target.env_reset()
             total_reward = 0
-
-            # Mini-Batches:
-            if (episode != 0 and episode == 10000) or (episode > 10000 and episode % 5000 == 0):
-                # calculate density
-                learner = learner_feature_expectations / episode
-                # Maximum Entropy IRL step
-                self.maxent_irl(expert, learner)
 
             for step in range(max_steps):
                 action = self.select_action(state, epsilon)
@@ -151,16 +144,24 @@ class MaxEntropyDeepIRL:
                 if done:
                     break
 
+            if episode != 0:
+                # if (episode+1) % 100 == 0:
+                # calculate density
+                learner = learner_feature_expectations / episode
+                learner_feature_expectations = np.zeros(n_states)
+                # Maximum Entropy IRL step
+                self.maxent_irl(expert, learner)
+
             scores.append(total_reward)
             episode_arr.append(episode)
             epsilon = max(epsilon * epsilon_decay, epsilon_min)
             print(f"Episode: {episode + 1}, Total Reward: {total_reward}, Epsilon: {epsilon}")
 
-            if episode % 1000 == 0 and episode != 0:
+            if (episode + 1) % 1000 == 0:
                 score_avg = np.mean(scores)
                 print('{} episode average score is {:.2f}'.format(episode, score_avg))
                 plt.plot(episode_arr, scores, 'b')
-                learner = learner_feature_expectations / episode
+                # learner = learner_feature_expectations / episode
                 plt.savefig(f"src/irlwpython/learning_curves/maxent_{episodes}_{episode}_qnetwork_class.png")
                 plt.imshow(learner.reshape((20, 20)), cmap='viridis', interpolation='nearest')
                 plt.savefig(f"src/irlwpython/heatmap/learner_{episode}_deep_class.png")
@@ -184,8 +185,6 @@ class MaxEntropyDeepIRL:
         :return:
         """
         self.q_network.load_state_dict(torch.load(model_path))
-        #self.q_network #.eval()
-
         episodes, scores = [], []
 
         for episode in range(10):

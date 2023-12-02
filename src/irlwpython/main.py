@@ -90,7 +90,7 @@ def main(args):
 
     if args.algorithm == "max-entropy-deep" and args.testing:
         trainer = MaxEntropyDeepIRL(car, 2, n_actions, feature_matrix, one_feature, theta)
-        trainer.test("demo/trained_models/model_maxentropydeep_best_model.pth")
+        trainer.test(".results/maxent_30000_999_network_main.pth")
 
     if args.algorithm == "max-entropy" and args.training:
         q_table = np.zeros((n_states, n_actions))
