@@ -56,6 +56,11 @@ class MountainCar:
         return state_idx
 
     def discretize_state(self, state):
+        """
+        Discretizes the position and velocity of the given state.
+        :param state:
+        :return:
+        """
         env_low = self.env.observation_space.low
         env_high = self.env.observation_space.high
         env_distance = (env_high - env_low) / self.one_feature
@@ -64,9 +69,17 @@ class MountainCar:
         return [position_idx, velocity_idx]
 
     def env_action_space(self):
+        """
+        Returns action space of gym environment.
+        :return:
+        """
         return self.env.action_space
 
     def env_observation_space(self):
+        """
+        Returns observation space of gym environment.
+        :return:
+        """
         return self.env.observation_space
 
     def env_render(self):

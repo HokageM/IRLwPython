@@ -2,8 +2,8 @@ import numpy as np
 import torch
 import torch.optim as optim
 import torch.nn as nn
-import matplotlib.pyplot as plt
-import PIL
+
+from irlwpython.FigurePrinter import FigurePrinter
 
 
 class QNetwork(nn.Module):
@@ -13,24 +13,30 @@ class QNetwork(nn.Module):
         self.relu1 = nn.ReLU()
         self.fc2 = nn.Linear(64, 32)
         self.relu2 = nn.ReLU()
+        # self.fc3 = nn.Linear(32, 32)
+        # self.relu3 = nn.ReLU()
         self.output_layer = nn.Linear(32, output_size)
+
+        self.printer = FigurePrinter()
 
     def forward(self, state):
         x = self.fc1(state)
         x = self.relu1(x)
-        # x = self.fc2(x)
-        # x = self.relu2(x)
+        x = self.fc2(x)
+        x = self.relu2(x)
+        # x = self.fc3(x)
+        # x = self.relu3(x)
         q_values = self.output_layer(x)
         return q_values
 
 
 class MaxEntropyDeepIRL:
-    def __init__(self, target, state_dim, action_size, feature_matrix, one_feature, theta,
+    def __init__(self, target, state_dim, action_size, feature_matrix, one_feature, theta, theta_learning_rate,
                  learning_rate=0.001, gamma=0.99):
         self.feature_matrix = feature_matrix
         self.one_feature = one_feature
 
-        self.target = target  # Environment
+        self.target = target
 
         self.q_network = QNetwork(state_dim, action_size)
         self.target_q_network = QNetwork(state_dim, action_size)
@@ -39,10 +45,16 @@ class MaxEntropyDeepIRL:
 
         self.gamma = gamma
 
-        self.theta_learning_rate = 0.005
+        self.theta_learning_rate = theta_learning_rate
         self.theta = theta
 
     def select_action(self, state, epsilon):
+        """
+        Selects an action based on the q values from the network with epsilon greedy.
+        :param state:
+        :param epsilon:
+        :return:
+        """
         if np.random.rand() < epsilon:
             return np.random.choice(3)
         else:
@@ -61,6 +73,11 @@ class MaxEntropyDeepIRL:
         return irl_rewards[state_idx]
 
     def expert_feature_expectations(self, demonstrations):
+        """
+        Calculates the expert state frequencies from the demonstrations.
+        :param demonstrations:
+        :return:
+        """
         feature_expectations = np.zeros(self.feature_matrix.shape[0])
 
         for demonstration in demonstrations:
@@ -83,10 +100,19 @@ class MaxEntropyDeepIRL:
 
         # Clip theta
         for j in range(len(self.theta)):
-            if self.theta[j] > 0:  # log values
+            if self.theta[j] > 0:
                 self.theta[j] = 0
 
-    def update_q_network(self, state, action, reward, next_state, done):
+    def update_q_network(self, state, action, irl_reward, next_state, done):
+        """
+        Updates the q network based on the irl_reward
+        :param state:
+        :param action:
+        :param reward:
+        :param next_state:
+        :param done:
+        :return:
+        """
         state = torch.FloatTensor(state)
         next_state = torch.FloatTensor(next_state)
         q_values = self.q_network(state)
@@ -94,9 +120,9 @@ class MaxEntropyDeepIRL:
 
         target = q_values.clone()
         if not done:
-            target[action] = reward + self.gamma * torch.max(next_q_values).item()
+            target[action] = irl_reward + self.gamma * torch.max(next_q_values).item()
         else:
-            target[action] = reward
+            target[action] = irl_reward
 
         loss = nn.MSELoss()(q_values, target.detach())
         self.optimizer.zero_grad()
@@ -104,15 +130,31 @@ class MaxEntropyDeepIRL:
         self.optimizer.step()
 
     def update_target_network(self):
+        """
+        Updates the target network.
+        :return:
+        """
         self.target_q_network.load_state_dict(self.q_network.state_dict())
 
     def train(self, n_states, episodes=30000, max_steps=200,
               epsilon_start=1.0,
               epsilon_decay=0.995, epsilon_min=0.01):
+        """
+        Trains the network using the maximum entropy deep inverse reinforcement algorithm.
+        :param n_states:
+        :param episodes: Count of training episodes
+        :param max_steps: Max steps per episode
+        :param epsilon_start:
+        :param epsilon_decay:
+        :param epsilon_min:
+        :return:
+        """
         demonstrations = self.target.get_demonstrations()
         expert = self.expert_feature_expectations(demonstrations)
-        # plt.imshow(expert.reshape((20, 20)), cmap='viridis', interpolation='nearest')
-        # plt.savefig("src/irlwpython/heatmap/expert_deep.png")
+
+        self.printer.save_heatmap_as_png(expert.reshape((20, 20)), "../heatmap/expert_heatmap.png",
+                                         "Expert State Frequencies",
+                                         "Position", "Velocity")
 
         learner_feature_expectations = np.zeros(n_states)
 
@@ -127,7 +169,6 @@ class MaxEntropyDeepIRL:
                 action = self.select_action(state, epsilon)
 
                 next_state, reward, done, _, _ = self.target.env_step(action)
-                # Real Reward
                 total_reward += reward
 
                 # IRL
@@ -144,8 +185,7 @@ class MaxEntropyDeepIRL:
                 if done:
                     break
 
-            if episode != 0:
-                # if (episode+1) % 100 == 0:
+            if (episode + 1) % 10 == 0:
                 # calculate density
                 learner = learner_feature_expectations / episode
                 learner_feature_expectations = np.zeros(n_states)
@@ -160,28 +200,22 @@ class MaxEntropyDeepIRL:
             if (episode + 1) % 1000 == 0:
                 score_avg = np.mean(scores)
                 print('{} episode average score is {:.2f}'.format(episode, score_avg))
-                plt.plot(episode_arr, scores, 'b')
-                # learner = learner_feature_expectations / episode
-                plt.savefig(f"src/irlwpython/learning_curves/maxent_{episodes}_{episode}_qnetwork_class.png")
-                plt.imshow(learner.reshape((20, 20)), cmap='viridis', interpolation='nearest')
-                plt.savefig(f"src/irlwpython/heatmap/learner_{episode}_deep_class.png")
-                plt.imshow(self.theta.reshape((20, 20)), cmap='viridis', interpolation='nearest')
-                plt.savefig(f"src/irlwpython/heatmap/theta_{episode}_deep_class.png")
-                plt.imshow(self.feature_matrix.dot(self.theta).reshape((20, 20)), cmap='viridis',
-                           interpolation='nearest')
-                plt.savefig(f"src/irlwpython/heatmap/rewards_{episode}_deep_class.png")
+                self.printer.save_plot_as_png(episode_arr, scores,
+                                              f"../learning_curves/maxent_{episodes}_{episode}_qnetwork.png")
+                self.printer.save_heatmap_as_png(learner.reshape((20, 20)), f"../heatmap/learner_{episode}_deep.png")
+                self.printer.save_heatmap_as_png(self.theta.reshape((20, 20)), f"../heatmap/theta_{episode}_deep.png")
 
-                torch.save(self.q_network.state_dict(), f"./results/maxent_{episodes}_{episode}_network_class.pth")
+                torch.save(self.q_network.state_dict(), f"../results/maxent_{episodes}_{episode}_network_main.pth")
 
             if episode == episodes - 1:
-                plt.plot(episode_arr, scores, 'b')
-                plt.savefig(f"src/irlwpython/learning_curves/maxentdeep_{episodes}_qdeep_class.png")
+                self.printer.save_plot_as_png(episode_arr, scores,
+                                               f"../learning_curves/maxentdeep_{episodes}_qdeep_main.png")
 
         torch.save(self.q_network.state_dict(), f"src/irlwpython/results/maxentdeep_{episodes}_q_network_class.pth")
 
     def test(self, model_path, epsilon=0.01):
         """
-        Tests the previous trained model
+        Tests the previous trained model.
         :return:
         """
         self.q_network.load_state_dict(torch.load(model_path))
@@ -204,6 +238,9 @@ class MaxEntropyDeepIRL:
                     episodes.append(episode)
                     plt.plot(episodes, scores, 'b')
                     plt.savefig("src/irlwpython/learning_curves/test_maxentropydeep_best_model_results.png")
+
+                    self.printer.save_plot_as_png(episodes, scores
+                    "src/irlwpython/learning_curves/test_maxentropydeep_best_model_results.png")
                     break
 
             if episode % 1 == 0:

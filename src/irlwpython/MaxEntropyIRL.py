@@ -6,7 +6,6 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import PIL
 
 
 class MaxEntropyIRL:
@@ -65,7 +64,7 @@ class MaxEntropyIRL:
 
         # Clip theta
         for j in range(len(self.theta)):
-            if self.theta[j] > 0:  # log values
+            if self.theta[j] > 0:
                 self.theta[j] = 0
 
     def update_q_table(self, state, action, reward, next_state):
@@ -88,29 +87,22 @@ class MaxEntropyIRL:
         :return:
         """
         demonstrations = self.target.get_demonstrations()
-
-        # Get expert feature expectations
         expert = self.expert_feature_expectations(demonstrations)
-
-        # Learning
         learner_feature_expectations = np.zeros(self.n_states)
+
         episodes, scores = [], []
-        # For every episode
         for episode in range(episode_count):
-            # Resets the environment to an initial state and returns the initial observation.
-            # Start position is in random range of [-0.6, -0.4]
-            state = self.target.env_reset()
+            state, info = self.target.env_reset()
             score = 0
 
             # Mini-Batches:
-            if (episode != 0 and episode == 10000) or (episode > 10000 and episode % 5000 == 0): # % 100, and reset learner
+            if (episode != 0 and episode == 10000) or (
+                    episode > 10000 and episode % 5000 == 0):  # % 100, and reset learner
                 # calculate density
                 learner = learner_feature_expectations / episode
-                # Maximum Entropy IRL step
                 self.maxent_irl(expert, learner, theta_learning_rate)
 
-            # One Step in environment
-            state = state[0]
+            state = state
             while True:
                 state_idx = self.target.state_to_idx(state)
                 action = np.argmax(self.q_table[state_idx])
@@ -118,7 +110,7 @@ class MaxEntropyIRL:
                 # Run one timestep of the environment's dynamics.
                 next_state, reward, done, _, _ = self.target.env_step(action)
 
-                # get pseudo-reward and update q table
+                # Get pseudo-reward and update q table
                 irl_reward = self.get_reward(self.n_states, state_idx)
                 next_state_idx = self.target.state_to_idx(next_state)
                 self.update_q_table(state_idx, action, irl_reward, next_state_idx)

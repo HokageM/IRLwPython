@@ -16,6 +16,7 @@ __license__ = "MIT"
 
 _logger = logging.getLogger(__name__)
 
+
 def parse_args(args):
     """Parse command line parameters
 
@@ -68,14 +69,15 @@ def main(args):
 
     n_states = 400  # position - 20, velocity - 20 -> 20*20
     n_actions = 3  # Accelerate to the left: 0, Don’t accelerate: 1, Accelerate to the right: 2
+    state_dim = 2  # Velocity and position
     one_feature = 20  # number of state per one feature
-    feature_matrix = np.eye(n_states)  # (400, 400)
+    feature_matrix = np.eye(n_states)
 
     gamma = 0.99
     q_learning_rate = 0.03
 
     # Theta works as Rewards
-    theta_learning_rate = 0.05
+    theta_learning_rate = 0.001
     theta = -(np.random.uniform(size=(n_states,)))
 
     if args.render:
@@ -84,13 +86,12 @@ def main(args):
         car = MountainCar(False, one_feature)
 
     if args.algorithm == "max-entropy-deep" and args.training:
-        # Run MaxEnt Deep IRL using MountainCar environment
-        trainer = MaxEntropyDeepIRL(car, 2, n_actions, feature_matrix, one_feature, theta)
+        trainer = MaxEntropyDeepIRL(car, state_dim, n_actions, feature_matrix, one_feature, theta, theta_learning_rate)
         trainer.train(400)
 
     if args.algorithm == "max-entropy-deep" and args.testing:
-        trainer = MaxEntropyDeepIRL(car, 2, n_actions, feature_matrix, one_feature, theta)
-        trainer.test(".results/maxent_30000_999_network_main.pth")
+        trainer = MaxEntropyDeepIRL(car, 2, n_actions, feature_matrix, one_feature, theta, theta_learning_rate)
+        trainer.test("src/irlwpython/results/maxentropydeep_708_best_network_w_-84.0.pth")
 
     if args.algorithm == "max-entropy" and args.training:
         q_table = np.zeros((n_states, n_actions))
