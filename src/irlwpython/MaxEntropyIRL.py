@@ -6,7 +6,8 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import PIL
+
+from irlwpython.FigurePrinter import FigurePrinter
 
 
 class MaxEntropyIRL:
@@ -19,6 +20,8 @@ class MaxEntropyIRL:
         self.theta = theta
         self.gamma = gamma
         self.n_states = n_states
+
+        self.printer = FigurePrinter()
 
     def get_feature_matrix(self):
         """
@@ -65,7 +68,7 @@ class MaxEntropyIRL:
 
         # Clip theta
         for j in range(len(self.theta)):
-            if self.theta[j] > 0:  # log values
+            if self.theta[j] > 0:
                 self.theta[j] = 0
 
     def update_q_table(self, state, action, reward, next_state):
@@ -88,29 +91,24 @@ class MaxEntropyIRL:
         :return:
         """
         demonstrations = self.target.get_demonstrations()
-
-        # Get expert feature expectations
         expert = self.expert_feature_expectations(demonstrations)
-
-        # Learning
         learner_feature_expectations = np.zeros(self.n_states)
+
         episodes, scores = [], []
-        # For every episode
         for episode in range(episode_count):
-            # Resets the environment to an initial state and returns the initial observation.
-            # Start position is in random range of [-0.6, -0.4]
-            state = self.target.env_reset()
+            state, info = self.target.env_reset()
             score = 0
 
             # Mini-Batches:
-            if (episode != 0 and episode == 10000) or (episode > 10000 and episode % 5000 == 0):
+            if (episode + 1) % 10 == 0:
                 # calculate density
                 learner = learner_feature_expectations / episode
-                # Maximum Entropy IRL step
+
+                learner_feature_expectations = np.zeros(self.n_states)
+
                 self.maxent_irl(expert, learner, theta_learning_rate)
 
-            # One Step in environment
-            state = state[0]
+            state = state
             while True:
                 state_idx = self.target.state_to_idx(state)
                 action = np.argmax(self.q_table[state_idx])
@@ -118,7 +116,7 @@ class MaxEntropyIRL:
                 # Run one timestep of the environment's dynamics.
                 next_state, reward, done, _, _ = self.target.env_step(action)
 
-                # get pseudo-reward and update q table
+                # Get pseudo-reward and update q table
                 irl_reward = self.get_reward(self.n_states, state_idx)
                 next_state_idx = self.target.state_to_idx(next_state)
                 self.update_q_table(state_idx, action, irl_reward, next_state_idx)
@@ -133,29 +131,26 @@ class MaxEntropyIRL:
                     episodes.append(episode)
                     break
 
-            if episode % 1000 == 0 and episode != 0:
+            if (episode + 1) % 1000 == 0:
                 score_avg = np.mean(scores)
                 print('{} episode score is {:.2f}'.format(episode, score_avg))
-                plt.plot(episodes, scores, 'b')
-                plt.savefig(f"src/irlwpython/learning_curves/maxent_{episode}_qtable.png")
-                np.save(f"src/irlwpython/results/maxent_{episode}_qtable", arr=self.q_table)
-                learner = learner_feature_expectations / episode
-                plt.imshow(learner.reshape((20, 20)), cmap='viridis', interpolation='nearest')
-                plt.savefig(f"src/irlwpython/heatmap/learner_{episode}_qtable.png")
-                plt.imshow(self.theta.reshape((20, 20)), cmap='viridis', interpolation='nearest')
-                plt.savefig(f"src/irlwpython/heatmap/theta_{episode}_qtable.png")
-                plt.imshow(self.feature_matrix.dot(self.theta).reshape((20, 20)), cmap='viridis',
-                           interpolation='nearest')
-                plt.savefig(f"src/irlwpython/heatmap/rewards_{episode}_qtable.png")
+                self.printer.save_plot_as_png(episodes, scores,
+                                              f"src/irlwpython/learning_curves/maxent_{episode_count}_{episode}_qtable.png")
+                self.printer.save_heatmap_as_png(learner.reshape((20, 20)),
+                                                 f"src/irlwpython/heatmap/learner_{episode}_flat.png")
+                self.printer.save_heatmap_as_png(self.theta.reshape((20, 20)),
+                                                 f"src/irlwpython/heatmap/theta_{episode}_flat.png")
 
-    def test(self):
+                np.save(f"src/irlwpython/results/maxent_{episode}_qtable", arr=self.q_table)
+
+    def test(self, repeats=100):
         """
         Tests the previous trained model
         :return:
         """
         episodes, scores = [], []
 
-        for episode in range(10):
+        for episode in range(repeats):
             state = self.target.env_reset()
             score = 0
 
@@ -172,9 +167,10 @@ class MaxEntropyIRL:
                 if done:
                     scores.append(score)
                     episodes.append(episode)
-                    plt.plot(episodes, scores, 'b')
-                    plt.savefig("src/irlwpython/learning_curves/maxent_test_30000_maxentropy.png")
                     break
 
             if episode % 1 == 0:
                 print('{} episode score is {:.2f}'.format(episode, score))
+
+        self.printer.save_plot_as_png(episodes, scores,
+                                      "src/irlwpython/learning_curves/test_maxentropy_flat.png")
