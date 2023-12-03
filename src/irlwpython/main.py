@@ -1,10 +1,9 @@
 import argparse
-import logging
 
 import numpy as np
 import sys
 
-from irlwpython.MaxEntropyDeep import MaxEntropyDeepIRL
+from irlwpython.MaxEntropyDeepIRL import MaxEntropyDeepIRL
 from irlwpython.MountainCar import MountainCar
 from irlwpython.MaxEntropyIRL import MaxEntropyIRL
 
@@ -13,8 +12,6 @@ from irlwpython import __version__
 __author__ = "HokageM"
 __copyright__ = "HokageM"
 __license__ = "MIT"
-
-_logger = logging.getLogger(__name__)
 
 
 def parse_args(args):
@@ -42,35 +39,13 @@ def parse_args(args):
     return parser.parse_args(args)
 
 
-def setup_logging(loglevel):
-    """Setup basic logging
-
-    Args:
-      loglevel (int): minimum loglevel for emitting messages
-    """
-    logformat = "[%(asctime)s] %(levelname)s:%(name)s:%(message)s"
-    logging.basicConfig(
-        level=loglevel, stream=sys.stdout, format=logformat, datefmt="%Y-%m-%d %H:%M:%S"
-    )
-
-
 def main(args):
-    """Wrapper allowing :func:`fib` to be called with string arguments in a CLI fashion
-
-    Instead of returning the value from :func:`fib`, it prints the result to the
-    ``stdout`` in a nicely formatted message.
-
-    Args:
-      args (List[str]): command line parameters as list of strings
-          (for example  ``["--verbose", "42"]``).
-    """
     args = parse_args(args)
-    _logger.debug("Starting crazy calculations...")
 
     n_states = 400  # position - 20, velocity - 20 -> 20*20
     n_actions = 3  # Accelerate to the left: 0, Don’t accelerate: 1, Accelerate to the right: 2
     state_dim = 2  # Velocity and position
-    one_feature = 20  # number of state per one feature
+    one_feature = 20
     feature_matrix = np.eye(n_states)
 
     gamma = 0.99
@@ -91,7 +66,7 @@ def main(args):
 
     if args.algorithm == "max-entropy-deep" and args.testing:
         trainer = MaxEntropyDeepIRL(car, 2, n_actions, feature_matrix, one_feature, theta, theta_learning_rate)
-        trainer.test("src/irlwpython/results/maxentropydeep_708_best_network_w_-84.0.pth")
+        trainer.test("src/irlwpython/results/maxentropydeep_2397_best_network_w_-83.0.pth")
 
     if args.algorithm == "max-entropy" and args.training:
         q_table = np.zeros((n_states, n_actions))
@@ -99,11 +74,9 @@ def main(args):
         trainer.train(theta_learning_rate)
 
     if args.algorithm == "max-entropy" and args.testing:
-        q_table = np.load(file="demo/trained_models/qtable_maxentropy_30000_episodes.npy")
+        q_table = np.load(file="demo/trained_models/maxent_4999_qtable.npy")
         trainer = MaxEntropyIRL(car, feature_matrix, one_feature, q_table, q_learning_rate, gamma, n_states, theta)
         trainer.test()
-
-    _logger.info("Script ends here")
 
 
 def run():

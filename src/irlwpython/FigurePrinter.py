@@ -5,7 +5,7 @@ class FigurePrinter:
     def __int__(self):
         pass
 
-    def save_heatmap_as_png(data, output_path, title=None, xlabel="Position", ylabel="Velocity"):
+    def save_heatmap_as_png(self, data, output_path, title=None, xlabel="Position", ylabel="Velocity"):
         """
         Create a heatmap from a numpy array and save it as a PNG file.
         :param data: 2D numpy array containing the heatmap data.
@@ -28,7 +28,7 @@ class FigurePrinter:
         plt.savefig(output_path, format='png')
         plt.close(fig)
 
-    def save_plot_as_png(x, y, output_path, title=None, xlabel="Episodes", ylabel="Scores"):
+    def save_plot_as_png(self, x, y, output_path, title=None, xlabel="Episodes", ylabel="Scores"):
         """
         Create a line plot from x and y data and save it as a PNG file.
         :param x: 1D numpy array or list representing the x-axis values.

@@ -1,4 +1,6 @@
 import numpy as np
+import math
+
 import torch
 import torch.optim as optim
 import torch.nn as nn
@@ -13,8 +15,6 @@ class QNetwork(nn.Module):
         self.relu1 = nn.ReLU()
         self.fc2 = nn.Linear(64, 32)
         self.relu2 = nn.ReLU()
-        # self.fc3 = nn.Linear(32, 32)
-        # self.relu3 = nn.ReLU()
         self.output_layer = nn.Linear(32, output_size)
 
         self.printer = FigurePrinter()
@@ -24,8 +24,6 @@ class QNetwork(nn.Module):
         x = self.relu1(x)
         x = self.fc2(x)
         x = self.relu2(x)
-        # x = self.fc3(x)
-        # x = self.relu3(x)
         q_values = self.output_layer(x)
         return q_values
 
@@ -47,6 +45,8 @@ class MaxEntropyDeepIRL:
 
         self.theta_learning_rate = theta_learning_rate
         self.theta = theta
+
+        self.printer = FigurePrinter()
 
     def select_action(self, state, epsilon):
         """
@@ -161,6 +161,7 @@ class MaxEntropyDeepIRL:
         epsilon = epsilon_start
         episode_arr, scores = [], []
 
+        best_reward = -math.inf
         for episode in range(episodes):
             state, info = self.target.env_reset()
             total_reward = 0
@@ -185,11 +186,17 @@ class MaxEntropyDeepIRL:
                 if done:
                     break
 
+            # Keep track of best performing network
+            if total_reward > best_reward:
+                best_reward = total_reward
+                torch.save(self.q_network.state_dict(),
+                           f"../results/maxentropydeep_{episode}_best_network_w_{total_reward}.pth")
+
             if (episode + 1) % 10 == 0:
                 # calculate density
                 learner = learner_feature_expectations / episode
                 learner_feature_expectations = np.zeros(n_states)
-                # Maximum Entropy IRL step
+
                 self.maxent_irl(expert, learner)
 
             scores.append(total_reward)
@@ -209,11 +216,11 @@ class MaxEntropyDeepIRL:
 
             if episode == episodes - 1:
                 self.printer.save_plot_as_png(episode_arr, scores,
-                                               f"../learning_curves/maxentdeep_{episodes}_qdeep_main.png")
+                                              f"../learning_curves/maxentdeep_{episodes}_qdeep_main.png")
 
         torch.save(self.q_network.state_dict(), f"src/irlwpython/results/maxentdeep_{episodes}_q_network_class.pth")
 
-    def test(self, model_path, epsilon=0.01):
+    def test(self, model_path, epsilon=0.01, repeats=100):
         """
         Tests the previous trained model.
         :return:
@@ -221,7 +228,7 @@ class MaxEntropyDeepIRL:
         self.q_network.load_state_dict(torch.load(model_path))
         episodes, scores = [], []
 
-        for episode in range(10):
+        for episode in range(repeats):
             state, info = self.target.env_reset()
             score = 0
 
@@ -236,12 +243,11 @@ class MaxEntropyDeepIRL:
                 if done:
                     scores.append(score)
                     episodes.append(episode)
-                    plt.plot(episodes, scores, 'b')
-                    plt.savefig("src/irlwpython/learning_curves/test_maxentropydeep_best_model_results.png")
-
-                    self.printer.save_plot_as_png(episodes, scores
-                    "src/irlwpython/learning_curves/test_maxentropydeep_best_model_results.png")
                     break
 
             if episode % 1 == 0:
                 print('{} episode score is {:.2f}'.format(episode, score))
+
+        self.printer.save_plot_as_png(episodes, scores,
+                                      "src/irlwpython/learning_curves"
+                                      "/test_maxentropydeep_best_model_results.png")

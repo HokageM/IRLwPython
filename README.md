@@ -27,33 +27,43 @@ IRL using Q-Learning with a Maximum Entropy update function.
 
 #### Training
 
-*Learner training for 29000 episodes*:
+*Learner training for 1000 episodes*:
 
-<img src="demo/learning_curves/leaner_maxent_29000_episodes.png">
+<img src="demo/learning_curves/maxent_999_flat.png">
+
+*Learner training for 4000 episodes*:
+
+<img src="demo/learning_curves/maxent_4999_flat.png">
 
 #### Heatmaps
 
 *Learner state frequencies after 1000 episodes*:
 
-<img src="demo/heatmaps/learner_maxent_1000_episodes.png">
+<img src="demo/heatmaps/learner_999_flat.png">
 
-*Learner state frequencies after 29000 episodes*:
+*Learner state frequencies after 2000 episodes*:
 
-<img src="demo/heatmaps/leaner_maxent_29000_episodes.png">
+<img src="demo/heatmaps/learner_1999_flat.png">
 
-*State rewards heatmap after 1000 episodes*:
+*Learner state frequencies after 5000 episodes*:
 
-<img src="demo/heatmaps/rewards_maxent_1000_episodes.png">
+<img src="demo/heatmaps/learner_4999_flat.png">
 
-*State rewards heatmap after 29000 episodes*:
+<img src="demo/heatmaps/theta_999_flat.png">
 
-<img src="demo/heatmaps/rewards_maxent_29000_episodes.png">
+*State rewards heatmap after 5000 episodes*:
+
+<img src="demo/heatmaps/theta_4999_flat.png">
+
+*State rewards heatmap after 14000 episodes*:
+
+<img src="demo/heatmaps/theta_13999_flat.png">
 
 #### Testing
 
 *Testing results of the model after 29000 episodes*:
 
-<img src="demo/test_results/test_maxent_29000_episodes.png">
+<img src="demo/test_results/test_maxentropy_flat.png">
 
 
 ### Deep Maximum Entropy Inverse Reinforcement Learning
@@ -62,31 +72,44 @@ IRL using Deep Q-Learning with a Maximum Entropy update function.
 
 #### Training
 
-*Learner training for 29000 episodes*:
+*Learner training for 1000 episodes*:
 
-<img src="demo/learning_curves/learner_maxentropy_deep_29000_episodes.png">
+<img src="demo/learning_curves/maxentdeep_999_w_reset_10.png">
+
+*Learner training for 5000 episodes*:
+
+<img src="demo/learning_curves/maxentdeep_4999_w_reset_10.png">
 
 #### Heatmaps
 
 *Learner state frequencies after 1000 episodes*:
 
-<img src="demo/heatmaps/learner_maxentropydeep_1000_episodes.png">
+<img src="demo/heatmaps/learner_999_maxentdeep_w_reset_10.png">
 
-*Learner state frequencies after 29000 episodes*:
+*Learner state frequencies after 2000 episodes*:
 
-<img src="demo/heatmaps/learner_maxentropydeep_29000_episodes.png">
+<img src="demo/heatmaps/learner_1999_maxentdeep_w_reset_10.png">
+
+*Learner state frequencies after 5000 episodes*:
+
+<img src="demo/heatmaps/learner_4999_maxentdeep_w_reset_10.png">
 
 *State rewards heatmap after 1000 episodes*:
 
-<img src="demo/heatmaps/rewards_maxentropydeep_1000_episodes.png">
+<img src="demo/heatmaps/theta_999_maxentdeep_w_reset_10.png">
 
-*State rewards heatmap after 29000 episodes*:
+*State rewards heatmap after 2000 episodes*:
 
-<img src="demo/heatmaps/rewards_maxentropydeep_29000_episodes.png">
+<img src="demo/heatmaps/theta_1999_maxentdeep_w_reset_10.png">
+
+*State rewards heatmap after 5000 episodes*:
+
+<img src="demo/heatmaps/theta_4999_maxentdeep_w_reset_10.png">
+
 
 #### Testing
 
-*Testing results of the model after 29000 episodes*:
+*Testing results of the best model after 5000 episodes*:
 
 <img src="demo/test_results/test_maxentropydeep_best_model_results.png">
 
