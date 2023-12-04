@@ -4,6 +4,7 @@ import numpy as np
 import sys
 
 from irlwpython.MaxEntropyDeepIRL import MaxEntropyDeepIRL
+from irlwpython.MaxEntropyDeepRL import MaxEntropyDeepRL
 from irlwpython.MountainCar import MountainCar
 from irlwpython.MaxEntropyIRL import MaxEntropyIRL
 
@@ -31,7 +32,7 @@ def parse_args(args):
         version=f"IRLwPython {__version__}",
     )
     parser.add_argument('algorithm', metavar='ALGORITHM', type=str,
-                        help='Currently supported training algorithm: [max-entropy, max-entropy-deep]')
+                        help='Currently supported training algorithm: [max-entropy, max-entropy-deep, max-entropy-deep-rl]')
     parser.add_argument('--training', action='store_true', help="Enables training of model.")
     parser.add_argument('--testing', action='store_true',
                         help="Enables testing of previously created model.")
@@ -66,7 +67,7 @@ def main(args):
 
     if args.algorithm == "max-entropy-deep" and args.testing:
         trainer = MaxEntropyDeepIRL(car, 2, n_actions, feature_matrix, one_feature, theta, theta_learning_rate)
-        trainer.test("src/irlwpython/results/maxentropydeep_2397_best_network_w_-83.0.pth")
+        trainer.test("demo/trained_models5/maxentropydeep_2397_best_network_w_-83.0.pth")
 
     if args.algorithm == "max-entropy" and args.training:
         q_table = np.zeros((n_states, n_actions))
@@ -77,6 +78,14 @@ def main(args):
         q_table = np.load(file="demo/trained_models/maxent_4999_qtable.npy")
         trainer = MaxEntropyIRL(car, feature_matrix, one_feature, q_table, q_learning_rate, gamma, n_states, theta)
         trainer.test()
+
+    if args.algorithm == "max-entropy-deep-rl" and args.training:
+        trainer = MaxEntropyDeepRL(car, state_dim, n_actions, feature_matrix, one_feature)
+        trainer.train(400)
+
+    if args.algorithm == "max-entropy-deep-rl" and args.testing:
+        trainer = MaxEntropyDeepRL(car, 2, n_actions, feature_matrix, one_feature)
+        trainer.test("demo/trained_models5/maxentropydeep_3697_best_network_w_-83.0_RL.pth")
 
 
 def run():
