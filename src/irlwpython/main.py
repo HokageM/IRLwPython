@@ -32,7 +32,8 @@ def parse_args(args):
         version=f"IRLwPython {__version__}",
     )
     parser.add_argument('algorithm', metavar='ALGORITHM', type=str,
-                        help='Currently supported training algorithm: [max-entropy, max-entropy-deep, max-entropy-deep-rl]')
+                        help='Currently supported training algorithm: '
+                             '[max-entropy, max-entropy-deep, max-entropy-deep-rl]')
     parser.add_argument('--training', action='store_true', help="Enables training of model.")
     parser.add_argument('--testing', action='store_true',
                         help="Enables testing of previously created model.")

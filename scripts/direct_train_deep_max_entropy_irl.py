@@ -124,7 +124,7 @@ class MaxEntropyDeepIRL:
         env_high = env.observation_space.high
         env_distance = (env_high - env_low) / self.one_feature
 
-        raw_demo = np.load(file="../expert_demo/expert_demo.npy")
+        raw_demo = np.load(file="../src/irlwpython/expert_demo/expert_demo.npy")
         demonstrations = np.zeros((len(raw_demo), len(raw_demo[0]), 3))
         for x in range(len(raw_demo)):
             for y in range(len(raw_demo[0])):
