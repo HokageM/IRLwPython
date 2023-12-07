@@ -5,7 +5,6 @@
 #
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 from irlwpython.FigurePrinter import FigurePrinter
 
@@ -135,7 +134,8 @@ class MaxEntropyIRL:
                 score_avg = np.mean(scores)
                 print('{} episode score is {:.2f}'.format(episode, score_avg))
                 self.printer.save_plot_as_png(episodes, scores,
-                                              f"src/irlwpython/learning_curves/maxent_{episode_count}_{episode}_qtable.png")
+                                              f"src/irlwpython/learning_curves/"
+                                              f"maxent_{episode_count}_{episode}_qtable.png")
                 self.printer.save_heatmap_as_png(learner.reshape((20, 20)),
                                                  f"src/irlwpython/heatmap/learner_{episode}_flat.png")
                 self.printer.save_heatmap_as_png(self.theta.reshape((20, 20)),
