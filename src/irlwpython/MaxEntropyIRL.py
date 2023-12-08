@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from irlwpython.FigurePrinter import FigurePrinter
+from irlwpython.OutputHandler import OutputHandler
 
 
 class MaxEntropyIRL:
@@ -20,7 +20,7 @@ class MaxEntropyIRL:
         self.gamma = gamma
         self.n_states = n_states
 
-        self.printer = FigurePrinter()
+        self.output_hand = OutputHandler()
 
     def get_feature_matrix(self):
         """
@@ -133,12 +133,12 @@ class MaxEntropyIRL:
             if (episode + 1) % 1000 == 0:
                 score_avg = np.mean(scores)
                 print('{} episode score is {:.2f}'.format(episode, score_avg))
-                self.printer.save_plot_as_png(episodes, scores,
+                self.output_hand.save_plot_as_png(episodes, scores,
                                               f"src/irlwpython/learning_curves/"
                                               f"maxent_{episode_count}_{episode}_qtable.png")
-                self.printer.save_heatmap_as_png(learner.reshape((20, 20)),
+                self.output_hand.save_heatmap_as_png(learner.reshape((20, 20)),
                                                  f"src/irlwpython/heatmap/learner_{episode}_flat.png")
-                self.printer.save_heatmap_as_png(self.theta.reshape((20, 20)),
+                self.output_hand.save_heatmap_as_png(self.theta.reshape((20, 20)),
                                                  f"src/irlwpython/heatmap/theta_{episode}_flat.png")
 
                 np.save(f"src/irlwpython/results/maxent_{episode}_qtable", arr=self.q_table)
@@ -172,5 +172,5 @@ class MaxEntropyIRL:
             if episode % 1 == 0:
                 print('{} episode score is {:.2f}'.format(episode, score))
 
-        self.printer.save_plot_as_png(episodes, scores,
+        self.output_hand.save_plot_as_png(episodes, scores,
                                       "src/irlwpython/learning_curves/test_maxentropy_flat.png")

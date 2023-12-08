@@ -5,7 +5,7 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 
-from irlwpython.FigurePrinter import FigurePrinter
+from irlwpython.OutputHandler import OutputHandler
 
 
 class QNetwork(nn.Module):
@@ -17,7 +17,7 @@ class QNetwork(nn.Module):
         self.relu2 = nn.ReLU()
         self.output_layer = nn.Linear(32, output_size)
 
-        self.printer = FigurePrinter()
+        self.output_hand = OutputHandler()
 
     def forward(self, state):
         x = self.fc1(state)
@@ -42,7 +42,7 @@ class MaxEntropyDeepRL:
 
         self.gamma = gamma
 
-        self.printer = FigurePrinter()
+        self.output_hand = OutputHandler()
 
     def select_action(self, state, epsilon):
         """
@@ -150,16 +150,16 @@ class MaxEntropyDeepRL:
             if (episode + 1) % 1000 == 0:
                 score_avg = np.mean(scores)
                 print('{} episode average score is {:.2f}'.format(episode, score_avg))
-                self.printer.save_plot_as_png(episode_arr, scores,
+                self.output_hand.save_plot_as_png(episode_arr, scores,
                                               f"../learning_curves/maxent_{episodes}_{episode}_qnetwork_RL.png")
-                self.printer.save_heatmap_as_png(learner.reshape((20, 20)), f"../heatmap/learner_{episode}_deep_RL.png")
-                self.printer.save_heatmap_as_png(self.theta.reshape((20, 20)),
+                self.output_hand.save_heatmap_as_png(learner.reshape((20, 20)), f"../heatmap/learner_{episode}_deep_RL.png")
+                self.output_hand.save_heatmap_as_png(self.theta.reshape((20, 20)),
                                                  f"../heatmap/theta_{episode}_deep_RL.png")
 
                 torch.save(self.q_network.state_dict(), f"../results/maxent_{episodes}_{episode}_network_main.pth")
 
             if episode == episodes - 1:
-                self.printer.save_plot_as_png(episode_arr, scores,
+                self.output_hand.save_plot_as_png(episode_arr, scores,
                                               f"../learning_curves/maxentdeep_{episodes}_qdeep_RL.png")
 
         torch.save(self.q_network.state_dict(), f"src/irlwpython/results/maxentdeep_{episodes}_q_network_RL.pth")
@@ -192,6 +192,6 @@ class MaxEntropyDeepRL:
             if episode % 1 == 0:
                 print('{} episode score is {:.2f}'.format(episode, score))
 
-        self.printer.save_plot_as_png(episodes, scores,
+        self.output_hand.save_plot_as_png(episodes, scores,
                                       "src/irlwpython/learning_curves"
                                       "/test_maxentropydeep_best_model_RL_results.png")

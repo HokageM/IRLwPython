@@ -5,7 +5,7 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 
-from irlwpython.FigurePrinter import FigurePrinter
+from irlwpython.OutputHandler import OutputHandler
 
 
 class QNetwork(nn.Module):
@@ -17,7 +17,7 @@ class QNetwork(nn.Module):
         self.relu2 = nn.ReLU()
         self.output_layer = nn.Linear(32, output_size)
 
-        self.printer = FigurePrinter()
+        self.output_hand = OutputHandler()
 
     def forward(self, state):
         x = self.fc1(state)
