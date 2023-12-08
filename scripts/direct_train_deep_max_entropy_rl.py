@@ -142,7 +142,7 @@ def train(agent, env, learner_feature_expectations, n_states, episodes=5000, max
             total_reward += reward
 
             agent.update_q_network(state, action, reward, next_state, done)
-            agent.update_target_network()
+            agent.update_target_q_network()
 
             # State counting for densitiy
             state_idx = agent.state_to_idx(env, state)
