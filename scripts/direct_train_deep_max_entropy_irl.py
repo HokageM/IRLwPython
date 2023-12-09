@@ -79,7 +79,7 @@ class MaxEntropyDeepIRL:
         loss.backward()
         self.optimizer.step()
 
-    def update_target_network(self):
+    def update_target_q_network(self):
         """
         Updates the target network.
         :return:
@@ -124,7 +124,7 @@ class MaxEntropyDeepIRL:
         env_high = env.observation_space.high
         env_distance = (env_high - env_low) / self.one_feature
 
-        raw_demo = np.load(file="../src/irlwpython/expert_demo/expert_demo.npy")
+        raw_demo = np.load(file="src/irlwpython/expert_demo/expert_demo.npy")
         demonstrations = np.zeros((len(raw_demo), len(raw_demo[0]), 3))
         for x in range(len(raw_demo)):
             for y in range(len(raw_demo[0])):
@@ -184,7 +184,7 @@ def train(agent, env, expert, learner_feature_expectations, n_states, episodes=3
     epsilon = epsilon_start
     episode_arr, scores = [], []
 
-    save_heatmap_as_png(expert.reshape((20, 20)), "../heatmap/expert_heatmap.png", "Expert State Frequencies",
+    save_heatmap_as_png(expert.reshape((20, 20)), "src/irlwpython/heatmap/expert_heatmap.png", "Expert State Frequencies",
                         "Position", "Velocity")
 
     best_reward = -math.inf
@@ -216,11 +216,11 @@ def train(agent, env, expert, learner_feature_expectations, n_states, episodes=3
         if total_reward > best_reward:
             best_reward = total_reward
             torch.save(agent.q_network.state_dict(),
-                       f"../results/maxentropydeep_{episode}_best_network_w_{total_reward}.pth")
+                       f"src/irlwpython/results/maxentropydeep_{episode}_best_network_w_{total_reward}.pth")
 
         if (episode + 1) % 10 == 0:
             # calculate density
-            learner = learner_feature_expectations / episode
+            learner = learner_feature_expectations / 10
             learner_feature_expectations = np.zeros(n_states)
 
             agent.maxent_irl(expert, learner)
@@ -233,16 +233,16 @@ def train(agent, env, expert, learner_feature_expectations, n_states, episodes=3
         if (episode + 1) % 1000 == 0:
             score_avg = np.mean(scores)
             print('{} episode average score is {:.2f}'.format(episode, score_avg))
-            save_plot_as_png(episode_arr, scores, f"../learning_curves/maxent_{episodes}_{episode}_qnetwork.png")
-            save_heatmap_as_png(learner.reshape((20, 20)), f"../heatmap/learner_{episode}_deep.png")
-            save_heatmap_as_png(theta.reshape((20, 20)), f"../heatmap/theta_{episode}_deep.png")
+            save_plot_as_png(episode_arr, scores, f"src/irlwpython/learning_curves/maxent_{episodes}_{episode}_qnetwork.png")
+            save_heatmap_as_png(learner.reshape((20, 20)), f"src/irlwpython/heatmap/learner_{episode}_deep.png")
+            save_heatmap_as_png(theta.reshape((20, 20)), f"src/irlwpython/heatmap/theta_{episode}_deep.png")
 
-            torch.save(agent.q_network.state_dict(), f"../results/maxent_{episodes}_{episode}_network_main.pth")
+            torch.save(agent.q_network.state_dict(), f"src/irlwpython/results/maxent_{episodes}_{episode}_network_main.pth")
 
         if episode == episodes - 1:
-            save_plot_as_png(episode_arr, scores, f"../learning_curves/maxentdeep_{episodes}_qdeep_main.png")
+            save_plot_as_png(episode_arr, scores, f"src/irlwpython/learning_curves/maxentdeep_{episodes}_qdeep_main.png")
 
-    torch.save(agent.q_network.state_dict(), f"../results/maxentdeep_{episodes}_q_network_main.pth")
+    torch.save(agent.q_network.state_dict(), f"src/irlwpython/results/maxentdeep_{episodes}_q_network_main.pth")
 
 
 def save_heatmap_as_png(data, output_path, title=None, xlabel="Position", ylabel="Velocity"):
