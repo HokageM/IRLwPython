@@ -4,25 +4,31 @@
 
 Inverse Reinforcement Learning Algorithm implementation with python.
 
+# Exploring Maximum Entropy Inverse Reinforcement Learning
+
+My seminar paper can be found in [paper](https://github.com/HokageM/IRLwPython/tree/main/paper), which is based on
+IRLwPython version 0.0.1
+
 # Implemented Algorithms
 
-## Maximum Entropy IRL:
-
-Implementation of the Maximum Entropy inverse reinforcement learning algorithm from [1] and is based on the implementation
+## Maximum Entropy IRL (MEIRL):
+Implementation of the maximum entropy inverse reinforcement learning algorithm from [1] and is based on the implementation
 of [lets-do-irl](https://github.com/reinforcement-learning-kr/lets-do-irl/tree/master/mountaincar/maxent).
-It is an IRL algorithm using Q-Learning with a Maximum Entropy update function.
+It is an IRL algorithm using q-learning with a maximum entropy update function for the IRL reward estimation.
+The next action is selected based on the maximum of the q-values.
 
-## Maximum Entropy Deep IRL:
-
-An implementation of the Maximum Entropy inverse reinforcement learning algorithm, which uses a neural-network for the 
+## Maximum Entropy Deep IRL (MEDIRL:
+An implementation of the maximum entropy inverse reinforcement learning algorithm, which uses a neural-network for the 
 actor. 
-The estimated irl-reward is learned similar as in Maximum Entropy IRL.
-It is an IRL algorithm using Deep Q-Learning with a Maximum Entropy update function.
+The estimated irl-reward is learned similar as in MEIRL.
+It is an IRL algorithm using deep q-learning with a maximum entropy update function.
+The next action is selected based on an epsilon-greedy algorithm and the maximum of the q-values.
 
-## Maximum Entropy Deep RL:
-
-An implementation of the Maximum Entropy reinforcement learning algorithm.
-This algorithm is used to compare the IRL algorithms with an RL algorithm.
+## Maximum Entropy Deep RL (MEDRL):
+MEDRL is a RL implementation of the MEDIRL algorithm.
+This algorithm gets the real rewards directly from the environment, 
+instead of estimating IRL rewards.
+The NN architecture and action selection is the same as in MEDIRL.
 
 # Experiment
 
