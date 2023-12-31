@@ -46,7 +46,7 @@ class MaxEntropyDeepIRL:
         self.theta_learning_rate = theta_learning_rate
         self.theta = theta
 
-        self.printer = FigurePrinter()
+        self.printer = OutputHandler()
 
     def select_action(self, state, epsilon):
         """

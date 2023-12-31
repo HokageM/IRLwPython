@@ -151,16 +151,17 @@ class MaxEntropyDeepRL:
                 score_avg = np.mean(scores)
                 print('{} episode average score is {:.2f}'.format(episode, score_avg))
                 self.output_hand.save_plot_as_png(episode_arr, scores,
-                                              f"../learning_curves/maxent_{episodes}_{episode}_qnetwork_RL.png")
-                self.output_hand.save_heatmap_as_png(learner.reshape((20, 20)), f"../heatmap/learner_{episode}_deep_RL.png")
+                                                  f"../learning_curves/maxent_{episodes}_{episode}_qnetwork_RL.png")
+                self.output_hand.save_heatmap_as_png(learner.reshape((20, 20)),
+                                                     f"../heatmap/learner_{episode}_deep_RL.png")
                 self.output_hand.save_heatmap_as_png(self.theta.reshape((20, 20)),
-                                                 f"../heatmap/theta_{episode}_deep_RL.png")
+                                                     f"../heatmap/theta_{episode}_deep_RL.png")
 
                 torch.save(self.q_network.state_dict(), f"../results/maxent_{episodes}_{episode}_network_main.pth")
 
             if episode == episodes - 1:
                 self.output_hand.save_plot_as_png(episode_arr, scores,
-                                              f"../learning_curves/maxentdeep_{episodes}_qdeep_RL.png")
+                                                  f"../learning_curves/maxentdeep_{episodes}_qdeep_RL.png")
 
         torch.save(self.q_network.state_dict(), f"src/irlwpython/results/maxentdeep_{episodes}_q_network_RL.pth")
 
@@ -193,5 +194,5 @@ class MaxEntropyDeepRL:
                 print('{} episode score is {:.2f}'.format(episode, score))
 
         self.output_hand.save_plot_as_png(episodes, scores,
-                                      "src/irlwpython/learning_curves"
-                                      "/test_maxentropydeep_best_model_RL_results.png")
+                                          "src/irlwpython/learning_curves"
+                                          "/test_maxentropydeep_best_model_RL_results.png")
