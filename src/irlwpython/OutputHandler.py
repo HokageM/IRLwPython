@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
+import os
 
 
-class FigurePrinter:
+class OutputHandler:
     def __int__(self):
         pass
 
@@ -24,6 +25,11 @@ class FigurePrinter:
             plt.ylabel(ylabel)
         if title:
             plt.title(title)
+
+        target_dir = os.path.basename(output_path)
+        if not os.path.isdir(target_dir):
+            print(f"Creating directory {target_dir}")
+            os.mkdir(target_dir)
 
         plt.savefig(output_path, format='png')
         plt.close(fig)
@@ -48,5 +54,22 @@ class FigurePrinter:
         if title:
             plt.title(title)
 
+        target_dir = os.path.basename(output_path)
+        if not os.path.isdir(target_dir):
+            print(f"Creating directory {target_dir}")
+            os.mkdir(target_dir)
+
         plt.savefig(output_path, format='png')
         plt.close(fig)
+
+    def save_network(self, network, output_path):
+        target_dir = os.path.basename(output_path)
+        if not os.path.isdir(target_dir):
+            print(f"Creating directory {target_dir}")
+            os.mkdir(target_dir)
+
+    def save_qtable(self, qtable, output_path):
+        target_dir = os.path.basename(output_path)
+        if not os.path.isdir(target_dir):
+            print(f"Creating directory {target_dir}")
+            os.mkdir(target_dir)
